@@ -16,9 +16,6 @@ plugins:
   - - '@semantic-release/exec'
     # See .release.sh for what files are included in release
     - prepareCmd: "sh ./.release.sh ${nextRelease.version}"
-  - - '@semantic-release/exec'
-    # See .release.sh for what files are included in release
-    - prepareCmd: "echo ${UNITY_PACKAGE_NAME}"
   - - '@semantic-release/git'
     - assets:
         - 'Assets/source/Runtime/AssemblyInfo.cs'
@@ -27,6 +24,6 @@ plugins:
 publish:
   - path: "@semantic-release/github" 
     assets: 
-      - path: "${UNITY_PACKAGE_NAME}.unitypackage"
-        label: "${UNITY_PACKAGE_NAME} ${nextRelease.version} Unity Package"
-        name: "${UNITY_PACKAGE_NAME}-${nextRelease.version}.unitypackage"
+      - path: "Mirage.ClientSidePrediction.unitypackage"
+        label: "Mirage.ClientSidePrediction ${nextRelease.version} Unity Package"
+        name: "Mirage.ClientSidePrediction-${nextRelease.version}.unitypackage"
