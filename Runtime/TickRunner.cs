@@ -46,6 +46,12 @@ namespace JamesFrowen.CSP
         /// </summary>
         int lastInvokedTick;
 
+
+        /// <summary>
+        /// Called once a frame, before any ticks
+        /// </summary>
+        public event Action onEarlyUpdate;
+
         /// <summary>
         /// Make tick update event, Called before <see cref="onTick"/>
         /// </summary>
@@ -98,6 +104,8 @@ namespace JamesFrowen.CSP
             double delta = now - lastFrame;
             lastFrame = now;
 
+            onEarlyUpdate?.Invoke();
+            
             tickTimer += delta * TimeScale;
             while (tickTimer > FixedDeltaTime)
             {
