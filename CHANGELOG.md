@@ -1,3 +1,10 @@
+# [1.0.0-beta.2](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.1...v1.0.0-beta.2) (2022-08-08)
+
+
+### Bug Fixes
+
+* fixing version in release ([fc26896](https://github.com/James-Frowen/ClientSidePrediction/commit/fc268965814a73902bb158e5797040e4336c66d9))
+
 # 1.0.0-beta.1 (2022-08-08)
 
 
