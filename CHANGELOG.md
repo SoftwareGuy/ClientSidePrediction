@@ -1,3 +1,10 @@
+# [1.0.0-beta.3](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.2...v1.0.0-beta.3) (2022-08-08)
+
+
+### Bug Fixes
+
+* adding missing meta files ([bb04481](https://github.com/James-Frowen/ClientSidePrediction/commit/bb04481e4e109c3adf087c9c329caeb1e2744cde))
+
 # [1.0.0-beta.2](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.1...v1.0.0-beta.2) (2022-08-08)
 
 
