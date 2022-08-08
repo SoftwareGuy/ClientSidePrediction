@@ -8,19 +8,22 @@ plugins:
   - '@semantic-release/release-notes-generator'
   - '@semantic-release/commit-analyzer'
   - - '@semantic-release/changelog'
-    - changelogFile: '${SOURCE_PATH}/CHANGELOG.md'
+    - changelogFile: 'Assets/source/CHANGELOG.md'
   - - '@semantic-release/npm'
     - npmPublish: false
-      pkgRoot: "${SOURCE_PATH}"
+      pkgRoot: "Assets/source"
   # run prepareCmd after other steps so that changes are included in package
   - - '@semantic-release/exec'
     # See .release.sh for what files are included in release
     - prepareCmd: "sh ./.release.sh ${nextRelease.version}"
+  - - '@semantic-release/exec'
+    # See .release.sh for what files are included in release
+    - prepareCmd: "echo ${UNITY_PACKAGE_NAME}"
   - - '@semantic-release/git'
     - assets:
-        - '${SOURCE_PATH}/Runtime/AssemblyInfo.cs'
-        - '${SOURCE_PATH}/package.json'
-        - '${SOURCE_PATH}/CHANGELOG.md'
+        - 'Assets/source/Runtime/AssemblyInfo.cs'
+        - 'Assets/source/package.json'
+        - 'Assets/source/CHANGELOG.md'
 publish:
   - path: "@semantic-release/github" 
     assets: 
