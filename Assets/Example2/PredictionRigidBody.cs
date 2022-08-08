@@ -14,7 +14,7 @@ namespace JamesFrowen.CSP.Example2
 {
     public class PredictionRigidBody : PredictionBehaviour<ObjectState>
     {
-        static readonly ILogger logger = LogFactory.GetLogger<PredictionExample2>();
+        private static readonly ILogger logger = LogFactory.GetLogger<PredictionExample2>();
 
         public float ResimulateLerp = 0.1f;
         private Rigidbody body;
@@ -34,7 +34,7 @@ namespace JamesFrowen.CSP.Example2
 
         public override void ResimulationTransition(ObjectState before, ObjectState after)
         {
-            float t = ResimulateLerp;
+            var t = ResimulateLerp;
             ObjectState state = default;
             state.position = Vector3.Lerp(before.position, after.position, t);
             state.rotation = Quaternion.Slerp(before.rotation, after.rotation, t);

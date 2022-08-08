@@ -18,9 +18,8 @@ namespace JamesFrowen.CSP.Example2
     public class PredictionExample2 : PredictionBehaviour<InputState, ObjectState>, IDebugPredictionLocalCopy, IDebugPredictionAfterImage
     {
         public float ResimulateLerp = 0.1f;
-        [SerializeField] float speed = 15;
-
-        static readonly ILogger logger = LogFactory.GetLogger<PredictionExample2>();
+        [SerializeField] private float speed = 15;
+        private static readonly ILogger logger = LogFactory.GetLogger<PredictionExample2>();
 
         private Rigidbody body;
 
@@ -32,9 +31,9 @@ namespace JamesFrowen.CSP.Example2
         public override void ApplyInputs(InputState input, InputState previous)
         {
             // normalised so that speed isn't faster if moving diagonal
-            Vector3 move = new Vector3(x: input.Horizontal, y: 0, z: input.Vertical).normalized;
+            var move = new Vector3(x: input.Horizontal, y: 0, z: input.Vertical).normalized;
 
-            Vector3 topOfCube = transform.position + Vector3.up * .5f;
+            var topOfCube = transform.position + Vector3.up * .5f;
             body.AddForceAtPosition(speed * move, topOfCube, ForceMode.Acceleration);
         }
 
@@ -52,7 +51,7 @@ namespace JamesFrowen.CSP.Example2
         }
         public override void ResimulationTransition(ObjectState before, ObjectState after)
         {
-            float t = ResimulateLerp;
+            var t = ResimulateLerp;
             ObjectState state = default;
             state.position = Vector3.Lerp(before.position, after.position, t);
             state.rotation = Quaternion.Slerp(before.rotation, after.rotation, t);
@@ -82,7 +81,7 @@ namespace JamesFrowen.CSP.Example2
 
 
         #region IDebugPredictionLocalCopy
-        PredictionExample2 _copy;
+        private PredictionExample2 _copy;
         IDebugPredictionLocalCopy IDebugPredictionLocalCopy.Copy { get => _copy; set => _copy = (PredictionExample2)value; }
 
         void IDebugPredictionLocalCopy.Setup(IPredictionTime time)
@@ -90,7 +89,7 @@ namespace JamesFrowen.CSP.Example2
             PredictionTime = time;
         }
 
-        InputState noNetworkPrevious;
+        private InputState noNetworkPrevious;
         void IDebugPredictionLocalCopy.NoNetworkApply(object _input)
         {
             var input = (InputState)_input;
@@ -102,8 +101,8 @@ namespace JamesFrowen.CSP.Example2
         #endregion
 
         #region IDebugPredictionAfterImage
-        [SerializeField] bool _afterImage;
-        static Transform AfterImageParent;
+        [SerializeField] private bool _afterImage;
+        private static Transform AfterImageParent;
         void IDebugPredictionAfterImage.CreateAfterImage(object _state, Color color)
         {
             if (!_afterImage) return;
@@ -113,8 +112,8 @@ namespace JamesFrowen.CSP.Example2
             var state = (ObjectState)_state;
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.transform.parent = AfterImageParent;
-            Material mat = GetComponent<Renderer>().sharedMaterial;
-            Renderer renderer = cube.GetComponent<Renderer>();
+            var mat = GetComponent<Renderer>().sharedMaterial;
+            var renderer = cube.GetComponent<Renderer>();
             renderer.material = Instantiate(mat);
             _ = changeColorOverTime(cube, renderer.material, color);
             cube.transform.SetPositionAndRotation(state.position, state.rotation);
@@ -122,16 +121,16 @@ namespace JamesFrowen.CSP.Example2
 
         private async Task changeColorOverTime(GameObject cube, Material material, Color baseColor)
         {
-            Color a = baseColor;
-            Color b = baseColor;
+            var a = baseColor;
+            var b = baseColor;
             a.a = 0.4f;
             b.a = 0f;
 
-            float start = Time.time;
-            float end = start + 1;
+            var start = Time.time;
+            var end = start + 1;
             while (end > Time.time)
             {
-                float t = (end - Time.time);
+                var t = (end - Time.time);
                 // starts at t=1, so a is end point
                 var color = Color.Lerp(b, a, t * t);
                 material.color = color;

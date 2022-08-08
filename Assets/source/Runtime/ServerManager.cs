@@ -13,7 +13,6 @@ using System.Linq;
 using Mirage;
 using Mirage.Logging;
 using Mirage.Serialization;
-using Mirage.SocketLayer;
 using UnityEngine;
 
 
@@ -24,17 +23,16 @@ namespace JamesFrowen.CSP
     /// </summary>
     internal class ServerManager
     {
-        static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerManager");
+        private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerManager");
+        private readonly Dictionary<NetworkBehaviour, IPredictionBehaviour> behaviours = new Dictionary<NetworkBehaviour, IPredictionBehaviour>();
 
-        readonly Dictionary<NetworkBehaviour, IPredictionBehaviour> behaviours = new Dictionary<NetworkBehaviour, IPredictionBehaviour>();
         // keep track of player list ourselves, so that we can use the SendToMany that does not allocate
-        readonly List<INetworkPlayer> _players;
-        readonly Dictionary<INetworkPlayer, PlayerTimeTracker> _playerTracker = new Dictionary<INetworkPlayer, PlayerTimeTracker>();
-        readonly IPredictionSimulation simulation;
-        readonly IPredictionTime time;
-        readonly NetworkWorld _world;
-
-        bool hostMode;
+        private readonly List<INetworkPlayer> _players;
+        private readonly Dictionary<INetworkPlayer, PlayerTimeTracker> _playerTracker = new Dictionary<INetworkPlayer, PlayerTimeTracker>();
+        private readonly IPredictionSimulation simulation;
+        private readonly IPredictionTime time;
+        private readonly NetworkWorld _world;
+        private bool hostMode;
 
         internal int lastSim;
 
@@ -44,7 +42,7 @@ namespace JamesFrowen.CSP
         internal void SetHostMode()
         {
             hostMode = true;
-            foreach (KeyValuePair<NetworkBehaviour, IPredictionBehaviour> behaviour in behaviours)
+            foreach (var behaviour in behaviours)
             {
                 behaviour.Value.ServerController.SetHostMode();
             }
@@ -62,7 +60,7 @@ namespace JamesFrowen.CSP
             _world.onUnspawn += OnUnspawn;
 
             // add existing items
-            foreach (NetworkIdentity item in world.SpawnedIdentities)
+            foreach (var item in world.SpawnedIdentities)
             {
                 OnSpawn(item);
             }
@@ -82,7 +80,7 @@ namespace JamesFrowen.CSP
         private void OnSpawn(NetworkIdentity identity)
         {
             if (logger.LogEnabled()) logger.Log($"OnSpawn for {identity.NetId}");
-            foreach (NetworkBehaviour networkBehaviour in identity.NetworkBehaviours)
+            foreach (var networkBehaviour in identity.NetworkBehaviours)
             {
                 // todo is using NetworkBehaviour as key ok? or does this need optimizing
                 if (networkBehaviour is IPredictionBehaviour behaviour)
@@ -97,7 +95,7 @@ namespace JamesFrowen.CSP
         }
         private void OnUnspawn(NetworkIdentity identity)
         {
-            foreach (NetworkBehaviour networkBehaviour in identity.NetworkBehaviours)
+            foreach (var networkBehaviour in identity.NetworkBehaviours)
             {
                 if (networkBehaviour is IPredictionBehaviour)
                 {
@@ -115,7 +113,7 @@ namespace JamesFrowen.CSP
 
         private void simulate(int tick)
         {
-            foreach (IPredictionBehaviour behaviour in behaviours.Values)
+            foreach (var behaviour in behaviours.Values)
             {
                 behaviour.ServerController.Tick(tick);
             }
@@ -128,20 +126,20 @@ namespace JamesFrowen.CSP
             // todo get max size from config
             const int MAX_SIZE = 1157; // max notify size
             var msg = new WorldState() { tick = tick };
-            using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
+            using (var writer = NetworkWriterPool.GetWriter())
             {
-                int size = 0;
-                foreach (KeyValuePair<NetworkBehaviour, IPredictionBehaviour> kvp in behaviours)
+                var size = 0;
+                foreach (var kvp in behaviours)
                 {
                     writer.WriteNetworkBehaviour(kvp.Key);
 
-                    IPredictionBehaviour behaviour = kvp.Value;
+                    var behaviour = kvp.Value;
                     behaviour.ServerController.WriteState(writer, tick);
 
                     if (logger.LogEnabled())
                     {
-                        int newSize = writer.ByteLength;
-                        int behaviourSize = newSize - size;
+                        var newSize = writer.ByteLength;
+                        var behaviourSize = newSize - size;
                         size = newSize;
                         logger.Log($"Writing Behaviour:{kvp.Key.name} NetId:{kvp.Key.NetId} size:{behaviourSize}");
                     }
@@ -154,10 +152,10 @@ namespace JamesFrowen.CSP
                 }
 
                 var payload = writer.ToArraySegment();
-                for (int i = 0; i < _players.Count; i++)
+                for (var i = 0; i < _players.Count; i++)
                 {
-                    INetworkPlayer player = _players[i];
-                    PlayerTimeTracker tracker = _playerTracker[player];
+                    var player = _players[i];
+                    var tracker = _playerTracker[player];
 
                     // dont send if not ready
                     msg.state = tracker.ReadyForWorldState ? payload : default;
@@ -166,7 +164,7 @@ namespace JamesFrowen.CSP
                     // todo find way to avoid serialize multiple times
                     msg.ClientTime = tracker.LastReceivedClientTime;
 
-                    INotifyCallBack token = TickNotifyToken.GetToken(tracker, tick);
+                    var token = TickNotifyToken.GetToken(tracker, tick);
                     player.Send(msg, token);
                 }
             }
@@ -174,7 +172,7 @@ namespace JamesFrowen.CSP
 
         internal void HandleInput(INetworkPlayer player, InputState message)
         {
-            PlayerTimeTracker tracker = _playerTracker[player];
+            var tracker = _playerTracker[player];
             tracker.LastReceivedClientTime = Math.Max(tracker.LastReceivedClientTime, message.clientTime);
             // check if inputs have arrived in time and in order, otherwise we can't do anything with them.
             if (!ValidateInputTick(tracker, message.tick))
@@ -182,14 +180,14 @@ namespace JamesFrowen.CSP
 
             tracker.ReadyForWorldState = message.ready;
 
-            int length = message.length;
-            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(message.payload, _world))
+            var length = message.length;
+            using (var reader = NetworkReaderPool.GetReader(message.payload, _world))
             {
                 // keep reading while there is atleast 1 byte
                 // netBehaviour will be alteast 1 byte
                 while (reader.CanReadBytes(1))
                 {
-                    NetworkBehaviour networkBehaviour = reader.ReadNetworkBehaviour();
+                    var networkBehaviour = reader.ReadNetworkBehaviour();
 
                     if (networkBehaviour == null)
                     {
@@ -203,10 +201,10 @@ namespace JamesFrowen.CSP
                     if (!(networkBehaviour is IPredictionBehaviour behaviour))
                         throw new InvalidOperationException($"Networkbehaviour({networkBehaviour.NetId}, {networkBehaviour.ComponentIndex}) was not a IPredictionBehaviour");
 
-                    int inputTick = message.tick;
-                    for (int i = 0; i < length; i++)
+                    var inputTick = message.tick;
+                    for (var i = 0; i < length; i++)
                     {
-                        int t = inputTick - i;
+                        var t = inputTick - i;
                         behaviour.ServerController.ReadInput(tracker, reader, t);
                     }
                 }
@@ -262,19 +260,15 @@ namespace JamesFrowen.CSP
     /// <typeparam name="TState"></typeparam>
     internal class ServerController<TInput, TState> : IServerController
     {
-        static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerController");
-
-        readonly PredictionBehaviourBase<TInput, TState> behaviour;
-        readonly int _bufferSize;
-        readonly ServerManager _manager;
-        NullableRingBuffer<TInput> _inputBuffer;
-        NullableRingBuffer<TState> _stateBuffer;
-
-        (int tick, TInput input) lastValidInput;
-
-        int lastReceived = Helper.NO_VALUE;
-
-        bool hostMode;
+        private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerController");
+        private readonly PredictionBehaviourBase<TInput, TState> behaviour;
+        private readonly int _bufferSize;
+        private readonly ServerManager _manager;
+        private NullableRingBuffer<TInput> _inputBuffer;
+        private NullableRingBuffer<TState> _stateBuffer;
+        private (int tick, TInput input) lastValidInput;
+        private int lastReceived = Helper.NO_VALUE;
+        private bool hostMode;
         void IServerController.SetHostMode()
         {
             hostMode = true;
@@ -292,7 +286,8 @@ namespace JamesFrowen.CSP
             else // listen just incase auth is given late
                 behaviour.Identity.OnOwnerChanged.AddListener(OnOwnerChanged);
         }
-        void OnOwnerChanged(INetworkPlayer newOwner)
+
+        private void OnOwnerChanged(INetworkPlayer newOwner)
         {
             // create buffer and remove listener
             _inputBuffer = new NullableRingBuffer<TInput>(_bufferSize, behaviour as ISnapshotDisposer<TInput>);
@@ -301,17 +296,17 @@ namespace JamesFrowen.CSP
 
         void IServerController.WriteState(NetworkWriter writer, int tick)
         {
-            TState state = behaviour.GatherState();
+            var state = behaviour.GatherState();
             _stateBuffer.Set(tick, state);
-            int startBit = writer.BitPosition;
+            var startBit = writer.BitPosition;
             writer.Write(state);
-            int endBit = writer.BitPosition;
+            var endBit = writer.BitPosition;
             if (logger.LogEnabled()) logger.Log($"WriteState: {((endBit - startBit) + 7) / 8} bytes, Object:{behaviour.name}, Type:{behaviour.GetType()}");
         }
 
         void IServerController.ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick)
         {
-            TInput input = reader.Read<TInput>();
+            var input = reader.Read<TInput>();
             // if new, and after last sim
             if (inputTick > tracker.lastReceivedInput && inputTick > _manager.lastSim)
             {
@@ -322,17 +317,17 @@ namespace JamesFrowen.CSP
 
         void IServerController.Tick(int tick)
         {
-            bool hasInputs = behaviour.UseInputs();
+            var hasInputs = behaviour.UseInputs();
             if (hasInputs)
             {
                 // hostmode + host client has HasAuthority
                 if (hostMode && behaviour.HasAuthority)
                 {
-                    TInput thisTickInput = behaviour.GetInput();
+                    var thisTickInput = behaviour.GetInput();
                     _inputBuffer.Set(tick, thisTickInput);
                 }
 
-                getValidInputs(tick, out TInput input, out TInput previous);
+                getValidInputs(tick, out var input, out var previous);
                 behaviour.ApplyInputs(input, previous);
             }
 
@@ -342,7 +337,7 @@ namespace JamesFrowen.CSP
                 _inputBuffer.Clear(tick - 1);
         }
 
-        void getValidInputs(int tick, out TInput input, out TInput previous)
+        private void getValidInputs(int tick, out TInput input, out TInput previous)
         {
             input = default;
             previous = default;
@@ -351,15 +346,15 @@ namespace JamesFrowen.CSP
             if (!hostMode && lastReceived == Helper.NO_VALUE)
                 return;
 
-            getValidInput(tick, out bool currentValid, out input);
-            getValidInput(tick - 1, out bool _, out previous);
+            getValidInput(tick, out var currentValid, out input);
+            getValidInput(tick - 1, out var _, out previous);
             if (currentValid)
             {
                 lastValidInput = (tick, input);
             }
         }
 
-        void getValidInput(int tick, out bool valid, out TInput input)
+        private void getValidInput(int tick, out bool valid, out TInput input)
         {
             valid = _inputBuffer.TryGet(tick, out input);
             if (!valid)

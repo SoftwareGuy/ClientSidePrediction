@@ -42,11 +42,11 @@ namespace JamesFrowen.CSP
 
     public abstract class PredictionBehaviourBase<TInput, TState> : NetworkBehaviour, IPredictionBehaviour
     {
-        ClientController<TInput, TState> _clientController;
-        ServerController<TInput, TState> _serverController;
-        ServerManager _serverManager;
-        ClientManager _clientManager;
-        AddLateEvent _onPredictionSetup = new AddLateEvent();
+        private ClientController<TInput, TState> _clientController;
+        private ServerController<TInput, TState> _serverController;
+        private ServerManager _serverManager;
+        private ClientManager _clientManager;
+        private AddLateEvent _onPredictionSetup = new AddLateEvent();
 
         // annoying cs stuff to have internal property and interface
         internal IClientController ClientController => _clientController;

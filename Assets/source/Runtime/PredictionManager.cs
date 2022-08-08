@@ -26,7 +26,7 @@ namespace JamesFrowen.CSP
     }
     public class PredictionManager : MonoBehaviour
     {
-        static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.PredictionManager");
+        private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.PredictionManager");
 
         [Header("References")]
         public NetworkServer Server;
@@ -37,23 +37,21 @@ namespace JamesFrowen.CSP
 
         [Header("Start Settings")]
         [Tooltip("Does the client start ready? or does it wait for SetReady to be called")]
-        [SerializeField] bool clientIsReady = true;
+        [SerializeField] private bool clientIsReady = true;
 
         [Header("Tick Settings")]
         public float TickRate = 50;
         [Tooltip("How Often to send pings, used to make sure inputs are delay by correct amount")]
         public float PingInterval = 0.2f;
         [FormerlySerializedAs("ClientTickSettings")]
-        [SerializeField] ClientTickSettings _clientTickSettings = new ClientTickSettings();
+        [SerializeField] private ClientTickSettings _clientTickSettings = new ClientTickSettings();
 
         [Header("Debug")]
         public TickDebuggerOutput DebugOutput;
-
-        ClientManager clientManager;
-        ServerManager serverManager;
-
-        TickRunner _tickRunner;
-        IPredictionSimulation _simulation;
+        private ClientManager clientManager;
+        private ServerManager serverManager;
+        private TickRunner _tickRunner;
+        private IPredictionSimulation _simulation;
 
         public TickRunner TickRunner => _tickRunner;
 
@@ -86,7 +84,7 @@ namespace JamesFrowen.CSP
             ClientStopped(default);
         }
 
-        void ServerStarted()
+        private void ServerStarted()
         {
             _tickRunner = new TickRunner()
             {
@@ -100,17 +98,17 @@ namespace JamesFrowen.CSP
             Server.Connected.AddListener(serverManager.AddPlayer);
             Server.Disconnected.AddListener(serverManager.RemovePlayer);
 
-            foreach (INetworkPlayer player in Server.Players)
+            foreach (var player in Server.Players)
                 serverManager.AddPlayer(player);
         }
 
-        void ServerStopped()
+        private void ServerStopped()
         {
             // if null, nothing to clean up
             if (serverManager == null)
                 return;
 
-            foreach (NetworkIdentity obj in Server.World.SpawnedIdentities)
+            foreach (var obj in Server.World.SpawnedIdentities)
             {
                 if (obj.TryGetComponent(out IPredictionBehaviour behaviour))
                     behaviour.CleanUp();
@@ -124,9 +122,9 @@ namespace JamesFrowen.CSP
             serverManager = null;
         }
 
-        void ClientStarted()
+        private void ClientStarted()
         {
-            bool hostMode = Client.IsLocalClient;
+            var hostMode = Client.IsLocalClient;
 
             if (hostMode)
             {
@@ -157,7 +155,7 @@ namespace JamesFrowen.CSP
             }
         }
 
-        void ClientStopped(ClientStoppedReason _)
+        private void ClientStopped(ClientStoppedReason _)
         {
             // todo, can we just have the `clientManager == null)` check below?
             // nothing to clean up if hostmode
@@ -167,7 +165,7 @@ namespace JamesFrowen.CSP
             if (clientManager == null)
                 return;
 
-            foreach (NetworkIdentity obj in Client.World.SpawnedIdentities)
+            foreach (var obj in Client.World.SpawnedIdentities)
             {
                 if (obj.TryGetComponent(out IPredictionBehaviour behaviour))
                     behaviour.CleanUp();
@@ -225,7 +223,7 @@ namespace JamesFrowen.CSP
                     var clientRunner = (ClientTickRunner)TickRunner;
                     DebugOutput.ClientTimeScale = clientRunner.TimeScale;
                     DebugOutput.ClientDelayInTicks = clientRunner.Debug_DelayInTicks;
-                    (float average, float stdDev) = clientRunner.Debug_RTT.GetAverageAndStandardDeviation();
+                    (var average, var stdDev) = clientRunner.Debug_RTT.GetAverageAndStandardDeviation();
                     DebugOutput.ClientRTT = average;
                     DebugOutput.ClientJitter = stdDev;
                 }

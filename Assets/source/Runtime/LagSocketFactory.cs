@@ -71,24 +71,23 @@ namespace JamesFrowen.Mirage.DebugScripts
 
     public class LagSocket : ISocket
     {
-        readonly ISocket inner;
-        readonly Pool<ByteBuffer> pool = new Pool<ByteBuffer>(ByteBuffer.CreateNew, 1300, 10, 1000, LogFactory.GetLogger<LagSocket>());
-        readonly byte[] receiveBuffer = new byte[1300];
-        readonly LagSettings settings;
-        readonly Random random = new Random();
+        private readonly ISocket inner;
+        private readonly Pool<ByteBuffer> pool = new Pool<ByteBuffer>(ByteBuffer.CreateNew, 1300, 10, 1000, LogFactory.GetLogger<LagSocket>());
+        private readonly byte[] receiveBuffer = new byte[1300];
+        private readonly LagSettings settings;
+        private readonly Random random = new Random();
 
         // these offsets done need to be settings because they just move the sin wave left/right from the origin
         // these will make sure that the sign waves dont overlap and have similar values to each other
-        readonly double dropSinOffset;
-        readonly double latencySinOffset;
-        readonly double jitterSinOffset;
+        private readonly double dropSinOffset;
+        private readonly double latencySinOffset;
+        private readonly double jitterSinOffset;
 
         // hard copies to endpoints because the one inner gives us may be changed and re-used
-        readonly Dictionary<IEndPoint, IEndPoint> endPoints = new Dictionary<IEndPoint, IEndPoint>();
-        readonly List<Message> messages = new List<Message>();
-
-        readonly object __locker = new object();
-        volatile bool closed = false;
+        private readonly Dictionary<IEndPoint, IEndPoint> endPoints = new Dictionary<IEndPoint, IEndPoint>();
+        private readonly List<Message> messages = new List<Message>();
+        private readonly object __locker = new object();
+        private volatile bool closed = false;
 
 
         public LagSocket(ISocket inner, LagSettings settings)
@@ -120,13 +119,12 @@ namespace JamesFrowen.Mirage.DebugScripts
             closed = true;
         }
 
-
-        void StartReceiveThread()
+        private void StartReceiveThread()
         {
             new Thread(ReceiveLoop).Start();
         }
 
-        void ReceiveLoop()
+        private void ReceiveLoop()
         {
             try
             {
@@ -148,15 +146,16 @@ namespace JamesFrowen.Mirage.DebugScripts
                 UnityEngine.Debug.LogException(e);
             }
         }
-        void ProcessInnerMessage()
+
+        private void ProcessInnerMessage()
         {
-            int length = inner.Receive(receiveBuffer, out IEndPoint endPoint);
+            var length = inner.Receive(receiveBuffer, out var endPoint);
             if (Drop() || length <= 0)
             {
                 return;
             }
 
-            if (!endPoints.TryGetValue(endPoint, out IEndPoint endPointCopy))
+            if (!endPoints.TryGetValue(endPoint, out var endPointCopy))
             {
                 endPointCopy = endPoint.CreateCopy();
                 endPoints[endPoint] = endPointCopy;
@@ -165,44 +164,44 @@ namespace JamesFrowen.Mirage.DebugScripts
             // we have to lock for `pool.Take` and `messages.Add`
             lock (__locker)
             {
-                ByteBuffer buffer = pool.Take();
+                var buffer = pool.Take();
                 Buffer.BlockCopy(receiveBuffer, 0, buffer.array, 0, length);
-                double receiveTime = Now() + Lag();
+                var receiveTime = Now() + Lag();
                 var item = new Message(receiveTime, length, buffer, endPointCopy);
                 messages.Add(item);
             }
         }
 
-
-        double Now()
+        private double Now()
         {
             return Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
         }
 
-        bool Drop()
+        private bool Drop()
         {
             // note 0.1 is high, but good example numbers :)
             // chance = 0.1, sin(t) = 0.8 => 8% chance to be dropped this time
             // chance = 0.1, sin(t) = 0.1 => 1% chance to be dropped this time
             // chance = 0.1, sin(t) = -1 => 0% chance to be dropped this time
 
-            double rand = random.NextDouble();
+            var rand = random.NextDouble();
 
-            double angle = Now() * settings.DropSinFrequency + dropSinOffset;
-            double chance = settings.DropChance * Math.Sin(angle);
+            var angle = Now() * settings.DropSinFrequency + dropSinOffset;
+            var chance = settings.DropChance * Math.Sin(angle);
             return rand < chance;
         }
-        double Lag()
+
+        private double Lag()
         {
             // add 2 sin wave together so there will be chances between ticks and between seconds
 
-            double angle1 = Now() * settings.LatencySinFrequency + latencySinOffset;
-            double angle2 = Now() * settings.JitterSinFrequency + jitterSinOffset;
-            double sin1 = Math.Sin(angle1);
-            double sin2 = Math.Sin(angle2);
+            var angle1 = Now() * settings.LatencySinFrequency + latencySinOffset;
+            var angle2 = Now() * settings.JitterSinFrequency + jitterSinOffset;
+            var sin1 = Math.Sin(angle1);
+            var sin2 = Math.Sin(angle2);
 
-            double sin1A = sin1 * settings.LatencySinAmplitude;
-            double sin2A = sin2 * settings.JitterSinAmplitude;
+            var sin1A = sin1 * settings.LatencySinAmplitude;
+            var sin2A = sin2 * settings.JitterSinAmplitude;
 
             return settings.Latency + sin1A + sin2A;
         }
@@ -211,11 +210,12 @@ namespace JamesFrowen.Mirage.DebugScripts
         {
             return AnyMessages();
         }
-        bool AnyMessages()
+
+        private bool AnyMessages()
         {
-            int count = messages.Count;
-            double now = Now();
-            for (int i = 0; i < count; i++)
+            var count = messages.Count;
+            var now = Now();
+            for (var i = 0; i < count; i++)
             {
                 if (messages[i].Time < now)
                 {
@@ -228,12 +228,12 @@ namespace JamesFrowen.Mirage.DebugScripts
 
         public int Receive(byte[] buffer, out IEndPoint endPoint)
         {
-            double earliest = double.MaxValue;
-            int index = 0;
-            int count = messages.Count;
-            for (int i = 0; i < count; i++)
+            var earliest = double.MaxValue;
+            var index = 0;
+            var count = messages.Count;
+            for (var i = 0; i < count; i++)
             {
-                double time = messages[i].Time;
+                var time = messages[i].Time;
                 if (time < earliest)
                 {
                     earliest = time;
@@ -242,8 +242,8 @@ namespace JamesFrowen.Mirage.DebugScripts
             }
 
             // copy message values
-            Message message = messages[index];
-            int length = message.Length;
+            var message = messages[index];
+            var length = message.Length;
             Buffer.BlockCopy(message.Buffer.array, 0, buffer, 0, length);
             endPoint = message.EndPoint;
 
@@ -258,7 +258,7 @@ namespace JamesFrowen.Mirage.DebugScripts
             return length;
         }
 
-        struct Message
+        private struct Message
         {
             public readonly double Time;
             public readonly int Length;
@@ -275,13 +275,13 @@ namespace JamesFrowen.Mirage.DebugScripts
         }
     }
 
-    class LagSocketGUI
+    internal class LagSocketGUI
     {
         //public Rect offset = new Rect(10, 10, 400, 800);
         //public Color background;
-        GUIStyle style;
-        Texture2D tex;
-        GUIStyle boldText;
+        private GUIStyle style;
+        private Texture2D tex;
+        private GUIStyle boldText;
 
         public LagSocketGUI()
         {
@@ -319,8 +319,9 @@ namespace JamesFrowen.Mirage.DebugScripts
             }
         }
 
-        readonly Dictionary<string, float> delayText = new Dictionary<string, float>();
-        void sliderWithTextBox(string label, ref float value, float min, float max, bool logSlider = false)
+        private readonly Dictionary<string, float> delayText = new Dictionary<string, float>();
+
+        private void sliderWithTextBox(string label, ref float value, float min, float max, bool logSlider = false)
         {
             using (new GUILayout.HorizontalScope())
             {
@@ -332,12 +333,12 @@ namespace JamesFrowen.Mirage.DebugScripts
             value = Mathf.Clamp(value, min, max);
         }
 
-        void delayTextField(string label, ref float value)
+        private void delayTextField(string label, ref float value)
         {
             if (!delayText.ContainsKey(label)) delayText[label] = 0;
 
-            string inText = value.ToString();
-            string outText = GUILayout.TextField(inText);
+            var inText = value.ToString();
+            var outText = GUILayout.TextField(inText);
             // if changed, save new time
             if (inText != outText)
             {
@@ -349,7 +350,7 @@ namespace JamesFrowen.Mirage.DebugScripts
             // if been 2 second since edit then apply value
             if (Time.time < delayText[label] + 2)
             {
-                if (float.TryParse(outText, out float fValue))
+                if (float.TryParse(outText, out var fValue))
                 {
 
                     value = fValue;
@@ -357,15 +358,15 @@ namespace JamesFrowen.Mirage.DebugScripts
             }
         }
 
-        static void slider(ref float value, float min, float max, bool logSlider)
+        private static void slider(ref float value, float min, float max, bool logSlider)
         {
             if (logSlider)
             {
-                float inValue = (float)Math.Log10(value);
-                float inMin = (float)Math.Log10(min != 0 ? min : 1 / 10_000f);
-                float inMax = (float)Math.Log10(max);
+                var inValue = (float)Math.Log10(value);
+                var inMin = (float)Math.Log10(min != 0 ? min : 1 / 10_000f);
+                var inMax = (float)Math.Log10(max);
 
-                float outValue = GUILayout.HorizontalSlider(inValue, inMin, inMax);
+                var outValue = GUILayout.HorizontalSlider(inValue, inMin, inMax);
                 value = (float)Math.Pow(10, outValue);
             }
             else

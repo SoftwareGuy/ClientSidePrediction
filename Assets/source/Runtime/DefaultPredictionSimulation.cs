@@ -16,9 +16,9 @@ namespace JamesFrowen.CSP.Simulations
 {
     public class DefaultPredictionSimulation : IPredictionSimulation
     {
-        readonly SimulationMode mode;
-        readonly PhysicsScene local3d;
-        readonly PhysicsScene2D local2d;
+        private readonly SimulationMode mode;
+        private readonly PhysicsScene local3d;
+        private readonly PhysicsScene2D local2d;
 
         public DefaultPredictionSimulation(SimulationMode mode, Scene scene)
         {

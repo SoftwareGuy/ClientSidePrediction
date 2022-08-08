@@ -30,7 +30,7 @@ namespace JamesFrowen.CSP
             if (follower == null)
                 return;
 
-            Vector3 target = transform.position + positionOffset;
+            var target = transform.position + positionOffset;
             follower.position = Vector3.Lerp(follower.position, target, smooth);
             //follower.rotation = Quaternion.Euler(eulerOffset);
         }

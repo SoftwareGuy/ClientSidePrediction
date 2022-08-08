@@ -13,7 +13,7 @@ namespace JamesFrowen.CSP.Examples
     /// </summary>
     public class SingleInstanceDebugStart : NetworkManager
     {
-        static SingleInstanceDebugStart instance;
+        private static SingleInstanceDebugStart instance;
 
         public GameObject prefab;
         [Scene] public string scene;
@@ -39,7 +39,7 @@ namespace JamesFrowen.CSP.Examples
             }
         }
 
-        class Handler : ILogHandler
+        private class Handler : ILogHandler
         {
             public ILogHandler inner;
 
@@ -53,12 +53,13 @@ namespace JamesFrowen.CSP.Examples
                 inner.LogFormat(logType, context, $"[{DateTime.Now:HH:mm:ss.ffff}] {format}", args);
             }
         }
-        PredictionManager CreateManager(NetworkClient client, NetworkServer server, Scene scene)
+
+        private PredictionManager CreateManager(NetworkClient client, NetworkServer server, Scene scene)
         {
-            string nameSuffix = server != null ? "Server" : "Client";
+            var nameSuffix = server != null ? "Server" : "Client";
             var go = new GameObject($"PredictionManager {nameSuffix}");
             go.SetActive(false);
-            PredictionManager manager = go.AddComponent<PredictionManager>();
+            var manager = go.AddComponent<PredictionManager>();
             if (ShowGui)
             {
                 manager.DebugOutput = go.AddComponent<TickDebuggerGui>();
@@ -90,23 +91,23 @@ namespace JamesFrowen.CSP.Examples
 
         private IEnumerator SetupServer()
         {
-            AsyncOperation serverOp = LoadScene(scene, new LoadSceneParameters { loadSceneMode = LoadSceneMode.Additive, localPhysicsMode = localPhysicsMode });
+            var serverOp = LoadScene(scene, new LoadSceneParameters { loadSceneMode = LoadSceneMode.Additive, localPhysicsMode = localPhysicsMode });
             yield return serverOp;
-            Scene serverScene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
+            var serverScene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
 
             Server.StartServer();
             Action<NetworkIdentity> ChangeObjectColor = ni =>
             {
-                Renderer renderer = ni.GetComponent<Renderer>();
-                Color color = renderer.material.color;
+                var renderer = ni.GetComponent<Renderer>();
+                var color = renderer.material.color;
                 renderer.material.color = color * ServerColor;
             };
             Server.World.onSpawn += ChangeObjectColor;
             Server.World.SpawnedIdentities.ToList().ForEach(ChangeObjectColor);
             Server.Connected.AddListener(player =>
             {
-                GameObject clone = Instantiate(prefab);
+                var clone = Instantiate(prefab);
                 SceneManager.MoveGameObjectToScene(clone, serverScene);
                 _ = CreateManager(null, Server, serverScene);
                 ServerObjectManager.AddCharacter(player, clone);
@@ -121,14 +122,14 @@ namespace JamesFrowen.CSP.Examples
 
         private IEnumerator SetupClient()
         {
-            UnityEngine.AsyncOperation clientOp = LoadScene(scene, new LoadSceneParameters { loadSceneMode = LoadSceneMode.Additive, localPhysicsMode = localPhysicsMode });
+            var clientOp = LoadScene(scene, new LoadSceneParameters { loadSceneMode = LoadSceneMode.Additive, localPhysicsMode = localPhysicsMode });
             yield return clientOp;
-            Scene clientScene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
+            var clientScene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
             Scene clientScene2 = default;
             if (ShowNoNetwork)
             {
-                UnityEngine.AsyncOperation clientOp2 = LoadScene(scene, new LoadSceneParameters { loadSceneMode = LoadSceneMode.Additive, localPhysicsMode = localPhysicsMode });
+                var clientOp2 = LoadScene(scene, new LoadSceneParameters { loadSceneMode = LoadSceneMode.Additive, localPhysicsMode = localPhysicsMode });
                 yield return clientOp2;
                 clientScene2 = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
             }
@@ -136,16 +137,16 @@ namespace JamesFrowen.CSP.Examples
 
             ClientObjectManager.RegisterSpawnHandler(prefab.GetComponent<NetworkIdentity>().PrefabHash, (msg) =>
             {
-                GameObject clone = Instantiate(prefab);
+                var clone = Instantiate(prefab);
                 SceneManager.MoveGameObjectToScene(clone, clientScene);
-                PredictionManager manager = CreateManager(Client, null, clientScene);
+                var manager = CreateManager(Client, null, clientScene);
                 clone.GetComponent<Renderer>().enabled = ShowClient;
 
                 if (ShowNoNetwork)
                 {
-                    GameObject clone2 = Instantiate(prefab);
+                    var clone2 = Instantiate(prefab);
                     SceneManager.MoveGameObjectToScene(clone2, clientScene2);
-                    IDebugPredictionLocalCopy behaviour2 = clone2.GetComponent<IDebugPredictionLocalCopy>();
+                    var behaviour2 = clone2.GetComponent<IDebugPredictionLocalCopy>();
                     clone.GetComponent<IDebugPredictionLocalCopy>().Copy = behaviour2;
                     behaviour2.Setup(new TickRunner() { TickRate = manager.TickRate });
                     clone2.GetComponent<Renderer>().material.color = Color.blue;
@@ -162,8 +163,8 @@ namespace JamesFrowen.CSP.Examples
 
                 Action<NetworkIdentity> ChangeObjectColor = ni =>
                 {
-                    Renderer renderer = ni.GetComponent<Renderer>();
-                    Color color = renderer.material.color;
+                    var renderer = ni.GetComponent<Renderer>();
+                    var color = renderer.material.color;
                     renderer.material.color = color * ClientColor;
                 };
                 Client.World.onSpawn += ChangeObjectColor;
@@ -173,7 +174,7 @@ namespace JamesFrowen.CSP.Examples
             Client.Connect();
         }
 
-        static AsyncOperation LoadScene(string scene, LoadSceneParameters parameters)
+        private static AsyncOperation LoadScene(string scene, LoadSceneParameters parameters)
         {
             return SceneManager.LoadSceneAsync(scene, parameters);
             //#if UNITY_EDITOR

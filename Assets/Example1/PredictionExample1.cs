@@ -15,10 +15,10 @@ namespace JamesFrowen.CSP.Example1
 {
     public class PredictionExample1 : PredictionBehaviour<InputState, ObjectState>, IDebugPredictionLocalCopy
     {
-        static readonly ILogger logger = LogFactory.GetLogger<PredictionExample1>();
+        private static readonly ILogger logger = LogFactory.GetLogger<PredictionExample1>();
 
         private Rigidbody body;
-        const float speed = 15;
+        private const float speed = 15;
 
         protected void Awake()
         {
@@ -27,7 +27,7 @@ namespace JamesFrowen.CSP.Example1
 
         public override void ApplyInputs(InputState input, InputState previous)
         {
-            Vector3 move = input.Horizontal * new Vector3(1, .25f /*small up force so it can move along floor*/, 0);
+            var move = input.Horizontal * new Vector3(1, .25f /*small up force so it can move along floor*/, 0);
             body.AddForce(speed * move, ForceMode.Acceleration);
             if (input.jump && !previous.jump)
             {
@@ -75,7 +75,7 @@ namespace JamesFrowen.CSP.Example1
         }
 
         #region IDebugPredictionLocalCopy
-        PredictionExample1 _copy;
+        private PredictionExample1 _copy;
         IDebugPredictionLocalCopy IDebugPredictionLocalCopy.Copy { get => _copy; set => _copy = (PredictionExample1)value; }
 
         void IDebugPredictionLocalCopy.Setup(IPredictionTime time)
@@ -83,7 +83,7 @@ namespace JamesFrowen.CSP.Example1
             PredictionTime = time;
         }
 
-        InputState noNetworkPrevious;
+        private InputState noNetworkPrevious;
         void IDebugPredictionLocalCopy.NoNetworkApply(object _input)
         {
             var input = (InputState)_input;

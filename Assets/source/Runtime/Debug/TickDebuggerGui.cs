@@ -1,19 +1,19 @@
 using UnityEngine;
 
 namespace JamesFrowen.CSP
-{ 
+{
     public class TickDebuggerGui : TickDebuggerOutput
     {
         private void OnGUI()
         {
-            int x = IsServer ? 100 : 400;
+            var x = IsServer ? 100 : 400;
             using (new GUILayout.AreaScope(new Rect(x, 10, 250, 500), GUIContent.none))
             {
                 GUI.enabled = false;
                 if (IsServer)
                 {
-                    bool ahead = ClientTick > ServerTick;
-                    string aheadText = ahead ? "Ahead" : "behind";
+                    var ahead = ClientTick > ServerTick;
+                    var aheadText = ahead ? "Ahead" : "behind";
                     GUILayout.Label($"Client Tick {ClientTick} {aheadText}");
                 }
                 else

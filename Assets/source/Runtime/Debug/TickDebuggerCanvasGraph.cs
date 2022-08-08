@@ -8,13 +8,12 @@ namespace JamesFrowen.CSP
         public RectInt Rect;
         public float scale = 5;
         public float thinkness = 20;
+        private GraphLine DiffGraph;
 
-        GraphLine DiffGraph;
-
-        void Start()
+        private void Start()
         {
             var gameObject = new GameObject("TickDebuggerCanvasGraph", typeof(RectTransform), typeof(Canvas), typeof(CanvasRenderer));
-            Canvas canvas = gameObject.GetComponent<Canvas>();
+            var canvas = gameObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
             DiffGraph = new GraphLine(Rect.width, Rect, canvas.transform, "Diff", thinkness, Color.red);
@@ -25,10 +24,10 @@ namespace JamesFrowen.CSP
             DiffGraph?.AddValue((float)Diff * scale);
         }
 
-        class GraphLine
+        private class GraphLine
         {
-            readonly RectTransform[] dataPoints;
-            int midPoint;
+            private readonly RectTransform[] dataPoints;
+            private int midPoint;
 
             public GraphLine(int count, RectInt rect, Transform canvas, string name, float thinkness, Color color)
             {
@@ -38,12 +37,12 @@ namespace JamesFrowen.CSP
                 parent.transform.SetParent(canvas, true);
 
                 midPoint = rect.y + rect.height / 2;
-                for (int x = 0; x < rect.width; x++)
+                for (var x = 0; x < rect.width; x++)
                 {
                     var dataPoint = new GameObject("DataPoint", typeof(RectTransform), typeof(Image));
-                    Image image = dataPoint.GetComponent<Image>();
+                    var image = dataPoint.GetComponent<Image>();
                     image.color = color;
-                    RectTransform rectTransform = dataPoint.GetComponent<RectTransform>();
+                    var rectTransform = dataPoint.GetComponent<RectTransform>();
                     dataPoints[x] = rectTransform;
                     rectTransform.SetParent(parent.transform, true);
                     rectTransform.sizeDelta = new Vector2(1, thinkness);
@@ -54,7 +53,7 @@ namespace JamesFrowen.CSP
             public void AddValue(float newValue)
             {
                 // move all values to left 1 index
-                for (int i = 0; i < dataPoints.Length - 1; i++)
+                for (var i = 0; i < dataPoints.Length - 1; i++)
                 {
                     dataPoints[i].position = new Vector2(dataPoints[i].position.x, dataPoints[i + 1].position.y);
                 }

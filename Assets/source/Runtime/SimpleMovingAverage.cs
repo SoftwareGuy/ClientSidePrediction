@@ -13,13 +13,14 @@ namespace JamesFrowen.CSP
 {
     public class SimpleMovingAverage
     {
-        readonly float[] _values;
-        int _index;
+        private readonly float[] _values;
+        private int _index;
+
         /// <summary>
         /// how many values are stored in ring buffer
         /// <para>this value is needed for first loop of inserts</para>
         /// </summary>
-        int _countInBuffer;
+        private int _countInBuffer;
 
         public SimpleMovingAverage(int size)
         {
@@ -38,8 +39,8 @@ namespace JamesFrowen.CSP
 
         public (float average, float stdDev) GetAverageAndStandardDeviation()
         {
-            float average = GetAverage();
-            float stdDev = calculateStandardDeviation(average);
+            var average = GetAverage();
+            var stdDev = calculateStandardDeviation(average);
             return (average, stdDev);
         }
 
@@ -48,8 +49,8 @@ namespace JamesFrowen.CSP
             if (_countInBuffer == 0)
                 return 0;
 
-            float sum = 0f;
-            for (int i = 0; i < _countInBuffer; i++)
+            var sum = 0f;
+            for (var i = 0; i < _countInBuffer; i++)
             {
                 sum += _values[i];
             }
@@ -59,23 +60,23 @@ namespace JamesFrowen.CSP
 
         public float GetStandardDeviation()
         {
-            float average = GetAverage();
+            var average = GetAverage();
             return calculateStandardDeviation(average);
         }
 
-        float calculateStandardDeviation(float average)
+        private float calculateStandardDeviation(float average)
         {
             if (_countInBuffer < 2)
                 return 0;
 
-            float sum = 0f;
-            for (int i = 0; i < _countInBuffer; i++)
+            var sum = 0f;
+            for (var i = 0; i < _countInBuffer; i++)
             {
-                float diff = _values[i] - average;
+                var diff = _values[i] - average;
                 sum += (diff * diff);
             }
 
-            float sqStdDev = sum / (_countInBuffer - 1);
+            var sqStdDev = sum / (_countInBuffer - 1);
             return (float)Math.Sqrt(sqStdDev);
         }
 

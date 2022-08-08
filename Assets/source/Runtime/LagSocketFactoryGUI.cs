@@ -14,7 +14,7 @@ namespace JamesFrowen.Mirage.DebugScripts
     [RequireComponent(typeof(LagSocketFactory))]
     public class LagSocketFactoryGUI : MonoBehaviour
     {
-        LagSocketFactory _factory;
+        private LagSocketFactory _factory;
         public Rect guiOffset;
         public Color guiColor;
         private LagSocketGUI drawer;

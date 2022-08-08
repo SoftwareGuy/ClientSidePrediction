@@ -7,16 +7,15 @@ namespace JamesFrowen.CSP
     {
         //public int ClientDelay;
 
-        TickRunner tickRunner;
-        ClientTickRunner ClientRunner => (ClientTickRunner)tickRunner;
+        private TickRunner tickRunner;
 
-        double latestClientTime;
-        int clientTick;
-        int serverTick;
+        private ClientTickRunner ClientRunner => (ClientTickRunner)tickRunner;
 
-        ExponentialMovingAverage diff = new ExponentialMovingAverage(10);
-
-        TickDebuggerOutput gui;
+        private double latestClientTime;
+        private int clientTick;
+        private int serverTick;
+        private ExponentialMovingAverage diff = new ExponentialMovingAverage(10);
+        private TickDebuggerOutput gui;
 
         private void Awake()
         {
@@ -40,13 +39,14 @@ namespace JamesFrowen.CSP
                 gui.ClientTimeScale = ClientRunner.TimeScale;
 #if DEBUG
                 gui.ClientDelayInTicks = ClientRunner.Debug_DelayInTicks;
-                (float average, float stdDev) = ClientRunner.Debug_RTT.GetAverageAndStandardDeviation();
+                (var average, var stdDev) = ClientRunner.Debug_RTT.GetAverageAndStandardDeviation();
                 gui.ClientRTT = average;
                 gui.ClientJitter = stdDev;
 #endif
             }
         }
-        void OnStartServer()
+
+        private void OnStartServer()
         {
             tickRunner = new TickRunner();
             tickRunner.onTick += ServerTick;
@@ -58,7 +58,7 @@ namespace JamesFrowen.CSP
             ToClient_StateMessage(tick, latestClientTime);
         }
 
-        void OnStartClient()
+        private void OnStartClient()
         {
             tickRunner = new ClientTickRunner(
                 movingAverageCount: 50 * 5// 5 seconds

@@ -12,15 +12,14 @@ using System.Collections.Generic;
 using Mirage;
 using Mirage.Logging;
 using Mirage.Serialization;
-using Mirage.SocketLayer;
 using UnityEngine;
 using UnityEngine.Assertions;
 
 namespace JamesFrowen.CSP
 {
-    class ClientTime : IPredictionTime
+    internal class ClientTime : IPredictionTime
     {
-        readonly IPredictionTime _tickRunner;
+        private readonly IPredictionTime _tickRunner;
 
         public ClientTime(IPredictionTime tickRunner)
         {
@@ -40,22 +39,20 @@ namespace JamesFrowen.CSP
     /// </summary>
     internal class ClientManager : ITickNotifyTracker
     {
-        static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ClientManager");
+        private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ClientManager");
+        private readonly Dictionary<NetworkBehaviour, IPredictionBehaviour> behaviours = new Dictionary<NetworkBehaviour, IPredictionBehaviour>();
+        private readonly IPredictionSimulation simulation;
+        private readonly IPredictionTime time;
+        private readonly INetworkPlayer _clientPlayer;
+        private readonly ClientTickRunner clientTickRunner;
 
-        readonly Dictionary<NetworkBehaviour, IPredictionBehaviour> behaviours = new Dictionary<NetworkBehaviour, IPredictionBehaviour>();
-
-        readonly IPredictionSimulation simulation;
-        readonly IPredictionTime time;
-        readonly INetworkPlayer _clientPlayer;
-        readonly ClientTickRunner clientTickRunner;
         /// <summary>Time used for physics, includes resimulation time. Driven by <see cref="time"/></summary>
-        readonly ClientTime clientTime;
-        readonly NetworkWorld world;
-
-        int lastReceivedTick = Helper.NO_VALUE;
-        bool unappliedTick;
-        const int maxInputPerPacket = 8;
-        int ackedInput = Helper.NO_VALUE;
+        private readonly ClientTime clientTime;
+        private readonly NetworkWorld world;
+        private int lastReceivedTick = Helper.NO_VALUE;
+        private bool unappliedTick;
+        private const int maxInputPerPacket = 8;
+        private int ackedInput = Helper.NO_VALUE;
 
         public bool ReadyForWorldState = true;
 
@@ -79,7 +76,7 @@ namespace JamesFrowen.CSP
             world.onUnspawn += OnUnspawn;
 
             // add existing items
-            foreach (NetworkIdentity item in world.SpawnedIdentities)
+            foreach (var item in world.SpawnedIdentities)
             {
                 OnSpawn(item);
             }
@@ -96,7 +93,7 @@ namespace JamesFrowen.CSP
 
         public void OnSpawn(NetworkIdentity identity)
         {
-            foreach (NetworkBehaviour networkBehaviour in identity.NetworkBehaviours)
+            foreach (var networkBehaviour in identity.NetworkBehaviours)
             {
                 if (networkBehaviour is IPredictionBehaviour behaviour)
                 {
@@ -108,7 +105,7 @@ namespace JamesFrowen.CSP
         }
         public void OnUnspawn(NetworkIdentity identity)
         {
-            foreach (NetworkBehaviour networkBehaviour in identity.NetworkBehaviours)
+            foreach (var networkBehaviour in identity.NetworkBehaviours)
             {
                 if (networkBehaviour is IPredictionBehaviour)
                 {
@@ -117,12 +114,13 @@ namespace JamesFrowen.CSP
             }
         }
 
-        void ReceiveWorldState(INetworkPlayer _, WorldState state)
+        private void ReceiveWorldState(INetworkPlayer _, WorldState state)
         {
             ReceiveState(state.tick, state.state);
             clientTickRunner.OnMessage(state.tick, state.ClientTime);
         }
-        void ReceiveState(int tick, ArraySegment<byte> statePayload)
+
+        private void ReceiveState(int tick, ArraySegment<byte> statePayload)
         {
             if (lastReceivedTick > tick)
             {
@@ -137,15 +135,15 @@ namespace JamesFrowen.CSP
             // no world state sent
             if (statePayload.Array == null)
                 return;
-            using (PooledNetworkReader reader = NetworkReaderPool.GetReader(statePayload, world))
+            using (var reader = NetworkReaderPool.GetReader(statePayload, world))
             {
                 while (reader.CanReadBytes(1))
                 {
-                    uint netId = reader.ReadPackedUInt32();
+                    var netId = reader.ReadPackedUInt32();
                     Debug.Assert(netId != 0);
-                    byte componentIndex = reader.ReadByte();
+                    var componentIndex = reader.ReadByte();
 
-                    if (!world.TryGetIdentity(netId, out NetworkIdentity identity))
+                    if (!world.TryGetIdentity(netId, out var identity))
                     {
                         // todo fix spawning 
                         // this breaks if state message is received before Mirage's spawn messages
@@ -153,7 +151,7 @@ namespace JamesFrowen.CSP
                         return;
                     }
 
-                    NetworkBehaviour networkBehaviour = identity.NetworkBehaviours[componentIndex];
+                    var networkBehaviour = identity.NetworkBehaviours[componentIndex];
 
 
                     Debug.Assert(behaviours.ContainsKey(networkBehaviour));
@@ -168,7 +166,7 @@ namespace JamesFrowen.CSP
             }
         }
 
-        void Resimulate(int from, int to)
+        private void Resimulate(int from, int to)
         {
             if (from > to)
             {
@@ -182,27 +180,27 @@ namespace JamesFrowen.CSP
             }
             if (logger.LogEnabled()) logger.Log($"Resimulate from {from} to {to}");
 
-            foreach (IPredictionBehaviour behaviour in behaviours.Values)
+            foreach (var behaviour in behaviours.Values)
                 behaviour.ClientController.BeforeResimulate();
 
             // step forward Applying inputs
             // - include lastSimTick tick, because resim will be called before next tick
             clientTime.IsResimulation = true;
-            for (int tick = from; tick <= to; tick++)
+            for (var tick = from; tick <= to; tick++)
             {
                 Simulate(tick);
             }
             clientTime.IsResimulation = false;
 
-            foreach (IPredictionBehaviour behaviour in behaviours.Values)
+            foreach (var behaviour in behaviours.Values)
                 behaviour.ClientController.AfterResimulate();
         }
 
-        void Simulate(int tick)
+        private void Simulate(int tick)
         {
             clientTime.Tick = tick;
 
-            foreach (IPredictionBehaviour behaviour in behaviours.Values)
+            foreach (var behaviour in behaviours.Values)
                 behaviour.ClientController.Simulate(tick);
             simulation.Simulate(time.FixedDeltaTime);
         }
@@ -221,7 +219,7 @@ namespace JamesFrowen.CSP
                 unappliedTick = false;
             }
 
-            foreach (IPredictionBehaviour behaviour in behaviours.Values)
+            foreach (var behaviour in behaviours.Values)
             {
                 // get and send inputs
                 if (behaviour.UseInputs())
@@ -233,7 +231,7 @@ namespace JamesFrowen.CSP
             Simulate(tick);
         }
 
-        void SendInputs(int tick)
+        private void SendInputs(int tick)
         {
             // no value means this is first send
             // for this case we can just send the acked value to tick-1 so that only new input is sent
@@ -249,13 +247,13 @@ namespace JamesFrowen.CSP
             // write number of inputs
             // write each input
 
-            using (PooledNetworkWriter writer = NetworkWriterPool.GetWriter())
+            using (var writer = NetworkWriterPool.GetWriter())
             {
-                int numberOfTicks = tick - ackedInput;
-                int length = Math.Min(numberOfTicks, maxInputPerPacket);
+                var numberOfTicks = tick - ackedInput;
+                var length = Math.Min(numberOfTicks, maxInputPerPacket);
                 Assert.IsTrue(1 <= length && length <= 8);
 
-                foreach (IPredictionBehaviour behaviour in behaviours.Values)
+                foreach (var behaviour in behaviours.Values)
                 {
                     // get and send inputs
                     if (behaviour.UseInputs())
@@ -263,9 +261,9 @@ namespace JamesFrowen.CSP
                         var nb = (NetworkBehaviour)behaviour;
                         Debug.Assert(nb.HasAuthority);
                         writer.WriteNetworkBehaviour(nb);
-                        for (int i = 0; i < length; i++)
+                        for (var i = 0; i < length; i++)
                         {
-                            int t = tick - i;
+                            var t = tick - i;
                             behaviour.ClientController.WriteInput(writer, t);
                         }
                     }
@@ -280,7 +278,7 @@ namespace JamesFrowen.CSP
                     ready = ReadyForWorldState,
                 };
 
-                INotifyCallBack token = TickNotifyToken.GetToken(this, tick);
+                var token = TickNotifyToken.GetToken(this, tick);
                 _clientPlayer.Send(message, token);
             }
         }
@@ -293,19 +291,16 @@ namespace JamesFrowen.CSP
     /// <typeparam name="TState"></typeparam>
     internal class ClientController<TInput, TState> : IClientController
     {
-        static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ClientController");
-
-        readonly PredictionBehaviourBase<TInput, TState> behaviour;
-        readonly int _bufferSize;
-        NullableRingBuffer<TInput> _inputBuffer;
-        NullableRingBuffer<TState> _stateBuffer;
-
-        int lastReceivedTick = Helper.NO_VALUE;
-        TState lastReceivedState;
-
-        bool hasSimulatedLocally;
-        bool hasBeforeResimulateState;
-        TState beforeResimulateState;
+        private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ClientController");
+        private readonly PredictionBehaviourBase<TInput, TState> behaviour;
+        private readonly int _bufferSize;
+        private NullableRingBuffer<TInput> _inputBuffer;
+        private NullableRingBuffer<TState> _stateBuffer;
+        private int lastReceivedTick = Helper.NO_VALUE;
+        private TState lastReceivedState;
+        private bool hasSimulatedLocally;
+        private bool hasBeforeResimulateState;
+        private TState beforeResimulateState;
 
         private int lastInputTick;
 
@@ -327,7 +322,7 @@ namespace JamesFrowen.CSP
             behaviour.Identity.OnAuthorityChanged.RemoveListener(OnAuthorityChanged);
         }
 
-        void ThrowIfHostMode()
+        private void ThrowIfHostMode()
         {
             if (behaviour.IsLocalClient)
                 throw new InvalidOperationException("Should not be called in host mode");
@@ -337,7 +332,7 @@ namespace JamesFrowen.CSP
         {
             ThrowIfHostMode();
 
-            TState state = reader.Read<TState>();
+            var state = reader.Read<TState>();
             if (lastReceivedTick > tick)
             {
                 logger.LogWarning("State out of order");
@@ -376,7 +371,7 @@ namespace JamesFrowen.CSP
 
             if (hasBeforeResimulateState && behaviour.EnableResimulationTransition)
             {
-                TState next = behaviour.GatherState();
+                var next = behaviour.GatherState();
                 behaviour.ResimulationTransition(beforeResimulateState, next);
                 if (behaviour is IDebugPredictionAfterImage debug)
                     debug.CreateAfterImage(next, new Color(0, 0.4f, 1f));
@@ -401,8 +396,8 @@ namespace JamesFrowen.CSP
 
             if (behaviour.UseInputs())
             {
-                TInput input = _inputBuffer.Get(tick);
-                TInput previous = _inputBuffer.Get(tick - 1);
+                var input = _inputBuffer.Get(tick);
+                var previous = _inputBuffer.Get(tick - 1);
                 behaviour.ApplyInputs(input, previous);
             }
             behaviour.NetworkFixedUpdate();
@@ -417,7 +412,7 @@ namespace JamesFrowen.CSP
                 if (logger.WarnEnabled()) logger.LogWarning($"Inputs ticks called out of order. Last:{lastInputTick} tick:{tick}");
             lastInputTick = tick;
 
-            TInput thisTickInput = behaviour.GetInput();
+            var thisTickInput = behaviour.GetInput();
             _inputBuffer.Set(tick, thisTickInput);
 
             if (behaviour is IDebugPredictionLocalCopy debug)
@@ -426,7 +421,7 @@ namespace JamesFrowen.CSP
 
         void IClientController.WriteInput(NetworkWriter writer, int tick)
         {
-            TInput input = _inputBuffer.Get(tick);
+            var input = _inputBuffer.Get(tick);
             writer.Write(input);
         }
     }

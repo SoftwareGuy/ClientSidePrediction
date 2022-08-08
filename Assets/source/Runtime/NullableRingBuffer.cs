@@ -17,9 +17,9 @@ namespace JamesFrowen.CSP
     /// </remarks>
     public struct NullableRingBuffer<T>
     {
-        readonly ISnapshotDisposer<T> _disposer;
-        readonly int _size;
-        readonly Valid[] _buffer;
+        private readonly ISnapshotDisposer<T> _disposer;
+        private readonly int _size;
+        private readonly Valid[] _buffer;
 
         public NullableRingBuffer(int size) : this(size, null) { }
         public NullableRingBuffer(int size, ISnapshotDisposer<T> disposer)
@@ -29,7 +29,7 @@ namespace JamesFrowen.CSP
             _disposer = disposer;
         }
 
-        int IndexToBuffer(int index)
+        private int IndexToBuffer(int index)
         {
             //negative
             if (index < 0)
@@ -40,7 +40,7 @@ namespace JamesFrowen.CSP
 
         public T Get(int index)
         {
-            Valid item = _buffer[IndexToBuffer(index)];
+            var item = _buffer[IndexToBuffer(index)];
             if (item.HasValue)
                 return item.Value;
             else
@@ -52,13 +52,13 @@ namespace JamesFrowen.CSP
         /// </summary>
         public bool IsValid(int index)
         {
-            Valid item = _buffer[IndexToBuffer(index)];
+            var item = _buffer[IndexToBuffer(index)];
             return item.HasValue;
         }
 
         public bool TryGet(int index, out T value)
         {
-            Valid item = _buffer[IndexToBuffer(index)];
+            var item = _buffer[IndexToBuffer(index)];
             if (item.HasValue)
             {
                 value = item.Value;
@@ -77,7 +77,7 @@ namespace JamesFrowen.CSP
             {
                 // when we set a new value, we want to make sure old value is disposed correctly. 
                 // this allows for pooled objects to be used in the state
-                Valid oldItem = _buffer[IndexToBuffer(index)];
+                var oldItem = _buffer[IndexToBuffer(index)];
                 if (oldItem.HasValue)
                 {
                     _disposer.DisposeState(oldItem.Value);
@@ -99,7 +99,7 @@ namespace JamesFrowen.CSP
         // we can't use nullable here or we will have to limit T to struct
         // T should probably be limited to struct anyway, but seems like a pain to put `where T : struct`  everywhere
         // todo should we just make T a struct??
-        struct Valid
+        private struct Valid
         {
             public T Value;
             public bool HasValue;

@@ -14,7 +14,7 @@ using Mirage.Serialization;
 namespace JamesFrowen.CSP
 {
     [NetworkMessage]
-    struct WorldState
+    internal struct WorldState
     {
         public int tick;
         /// <summary>
