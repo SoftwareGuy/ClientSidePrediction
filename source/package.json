@@ -7,7 +7,7 @@
   "author": "James Frowen",
   "repository": {
     "type": "git",
-    "url": "https://github.com/James-Frowen/ClientSidePrediction"
+    "url": "https://github.com/James-Frowen/ClientSidePrediction.git"
   },
   "dependencies": {
     "com.miragenet.mirage": "123.0.1"
