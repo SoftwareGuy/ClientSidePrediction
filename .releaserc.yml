@@ -8,22 +8,22 @@ plugins:
   - '@semantic-release/release-notes-generator'
   - '@semantic-release/commit-analyzer'
   - - '@semantic-release/changelog'
-    - changelogFile: 'CHANGELOG.md'
+    - changelogFile: '${SOURCE_PATH}/CHANGELOG.md'
   - - '@semantic-release/npm'
     - npmPublish: false
-      pkgRoot: "source"
+      pkgRoot: "${SOURCE_PATH}"
   # run prepareCmd after other steps so that changes are included in package
   - - '@semantic-release/exec'
     # See .release.sh for what files are included in release
     - prepareCmd: "sh ./.release.sh ${nextRelease.version}"
   - - '@semantic-release/git'
     - assets:
-        - 'source/Runtime/AssemblyInfo.cs'
-        - 'source/package.json'
-        - 'CHANGELOG.md'
+        - '${SOURCE_PATH}/Runtime/AssemblyInfo.cs'
+        - '${SOURCE_PATH}/package.json'
+        - '${SOURCE_PATH}/CHANGELOG.md'
 publish:
   - path: "@semantic-release/github" 
     assets: 
-      - path: "Mirage.ClientSidePrediction.unitypackage"
-        label: "Mirage.ClientSidePrediction ${nextRelease.version} Unity Package"
-        name: "Mirage.ClientSidePrediction-${nextRelease.version}.unitypackage"
+      - path: "${UNITY_PACKAGE_NAME}.unitypackage"
+        label: "${UNITY_PACKAGE_NAME} ${nextRelease.version} Unity Package"
+        name: "${UNITY_PACKAGE_NAME}-${nextRelease.version}.unitypackage"

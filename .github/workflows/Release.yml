@@ -9,9 +9,11 @@ on:
 jobs:
   Release:
     env:
-      SOURCE_PATH: source
+      SOURCE_PATH: Assets/source
       # target path should be path inside unityPackage, should be inside asset folder
       TARGET_PATH: Assets/Mirage.ClientSidePrediction
+      
+      UNITY_PACKAGE_NAME: Mirage.ClientSidePrediction
     runs-on: ubuntu-latest
     steps:
       - name: Setup dotnet
