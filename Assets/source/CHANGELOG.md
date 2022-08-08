@@ -1,3 +1,11 @@
+# [1.0.0-beta.4](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.3...v1.0.0-beta.4) (2022-08-08)
+
+
+### Bug Fixes
+
+* adding other meta files ([017251f](https://github.com/James-Frowen/ClientSidePrediction/commit/017251fd8fff3e149f2f13697acdac3bc76af5ba))
+* moving files into asset folder ([dbf67d2](https://github.com/James-Frowen/ClientSidePrediction/commit/dbf67d280c943a94bf688ac8499148af3e3e1e01))
+
 # [1.0.0-beta.3](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.2...v1.0.0-beta.3) (2022-08-08)
 
 
