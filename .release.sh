@@ -7,6 +7,4 @@ sed -i -e '/AssemblyVersion/s/\".*\"/\"'$VER'\"/' \
     ${SOURCE_PATH}/AssemblyInfo.cs
 
 unity-packer pack Mirage.ClientSidePrediction.unitypackage \
-    ${SOURCE_PATH} ${TARGET_PATH} \
-    README.md ${TARGET_PATH}/README.md \
-    CHANGELOG.md ${TARGET_PATH}/CHANGELOG.md
+    ${SOURCE_PATH} ${TARGET_PATH}
