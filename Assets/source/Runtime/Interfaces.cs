@@ -102,12 +102,6 @@ namespace JamesFrowen.CSP
         void CleanUp();
     }
 
-    public interface ISnapShotGeneration<TState>
-    {
-        TState GatherState();
-        void ApplyState(TState state);
-    }
-
     public interface ISnapshotDisposer<TState>
     {
         void DisposeState(TState state);
