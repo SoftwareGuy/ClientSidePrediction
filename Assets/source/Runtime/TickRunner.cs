@@ -8,10 +8,10 @@ using UnityEngine.Assertions;
 
 namespace JamesFrowen.CSP
 {
+    public delegate void OnTick(int tick);
+
     public class TickRunner : IPredictionTime
     {
-        public delegate void OnTick(int tick);
-
         private static readonly ILogger logger = LogFactory.GetLogger<TickRunner>();
 
         public float TickRate = 50;
@@ -52,20 +52,25 @@ namespace JamesFrowen.CSP
         /// <summary>
         /// Called once a frame, before any ticks
         /// </summary>
-        public event Action onEarlyUpdate;
+        public event Action BeforeAllTicks;
 
         /// <summary>
-        /// Make tick update event, Called before <see cref="onTick"/>
+        /// Main tick update event, Called before <see cref="Tick"/>
         /// </summary>
-        public event OnTick onPreTick;
+        public event OnTick BeforeTick;
         /// <summary>
-        /// Make tick update event
+        /// Main tick update event
         /// </summary>
-        public event OnTick onTick;
+        public event OnTick OnTick;
         /// <summary>
-        /// Late tick update event, Called after <see cref="onTick"/>
+        /// Late tick update event, Called after <see cref="Tick"/>
         /// </summary>
-        public event OnTick onPostTick;
+        public event OnTick AfterTick;
+
+        /// <summary>
+        /// Late tick update event, Called after <see cref="Tick"/>
+        /// </summary>
+        public event Action AfterAllTicks;
 
         public TickRunner()
         {
@@ -106,7 +111,7 @@ namespace JamesFrowen.CSP
             var delta = now - lastFrame;
             lastFrame = now;
 
-            onEarlyUpdate?.Invoke();
+            BeforeAllTicks?.Invoke();
 
             tickTimer += delta * TimeScale;
             while (tickTimer > FixedDeltaTime)
@@ -118,9 +123,9 @@ namespace JamesFrowen.CSP
                 // todo what if we jump back, do we not need to resimulate?
                 if (_tick > lastInvokedTick)
                 {
-                    onPreTick?.Invoke(_tick);
-                    onTick?.Invoke(_tick);
-                    onPostTick?.Invoke(_tick);
+                    BeforeTick?.Invoke(_tick);
+                    OnTick?.Invoke(_tick);
+                    AfterTick?.Invoke(_tick);
                     lastInvokedTick = _tick;
                 }
 
@@ -130,6 +135,8 @@ namespace JamesFrowen.CSP
                     break;
                 }
             }
+
+            AfterAllTicks?.Invoke();
         }
 
         // have this virtual methods here, just so we have use 1 field for TickRunner.
