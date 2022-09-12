@@ -140,6 +140,9 @@ namespace JamesFrowen.CSP
                     lastInvokedTick = _tick;
                 }
 
+                // todo improve this. Maybe have a max for tickTimer incase we get too far ahead of it.
+                //      eg if we are slow for a few frames, and get 200 ticks behind, we could maybe drop 120 frames and continue from there?
+                //      would we need to tell client about this
                 if (GetCurrentTime() > max)
                 {
                     if (logger.WarnEnabled()) logger.LogWarning($"Took longer than {MaxFrameTime}ms to process frame. Processed {_tick - startTick} ticks in {(GetCurrentTime() - now) * 1000f}ms");
@@ -267,7 +270,8 @@ namespace JamesFrowen.CSP
             // todo will skipping behind cause negative effects? we dont want Tick event to be invoked for a tick twice
             if (Math.Abs(diff) > skipAheadThreshold)
             {
-                logger.LogWarning($"Client fell behind, skipping ahead. server:{serverTick:0.00} serverGuess:{serverGuess} diff:{diff:0.00}");
+                (var lag, var jitter) = _RTTAverage.GetAverageAndStandardDeviation();
+                logger.LogWarning($"Client fell behind, skipping ahead. server:{serverTick:0.00} serverGuess:{serverGuess} diff:{diff:0.00}. RTT[lag={lag},jitter={jitter}]");
                 InitNew(serverTick);
                 return;
             }
