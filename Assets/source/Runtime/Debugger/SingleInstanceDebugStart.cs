@@ -6,7 +6,7 @@ using Mirage.Logging;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace JamesFrowen.CSP.Examples
+namespace JamesFrowen.CSP.Debugging
 {
     /// <summary>
     /// Starts a server and client inside the game unity instance. Used by the examples to show copies of same object.
@@ -27,6 +27,9 @@ namespace JamesFrowen.CSP.Examples
         public LocalPhysicsMode localPhysicsMode;
         public Color ServerColor = new Color(1, 0, 0, 0.7f);
         public Color ClientColor = Color.green;
+
+        private PredictionManager ClientManager;
+        private PredictionManager ServerManager;
 
         private void Awake()
         {
@@ -87,6 +90,12 @@ namespace JamesFrowen.CSP.Examples
 
             yield return SetupServer();
             yield return SetupClient();
+
+            while (!Client.IsConnected || ClientManager == null)
+                yield return null;
+
+            ClientManager.SetClientReady(true);
+            ServerManager.SetServerRunning(true);
         }
 
         private IEnumerator SetupServer()
@@ -109,7 +118,7 @@ namespace JamesFrowen.CSP.Examples
             {
                 var clone = Instantiate(prefab);
                 SceneManager.MoveGameObjectToScene(clone, serverScene);
-                _ = CreateManager(null, Server, serverScene);
+                ServerManager = CreateManager(null, Server, serverScene);
                 ServerObjectManager.AddCharacter(player, clone);
 
                 clone.GetComponent<Renderer>().enabled = ShowServer;
@@ -139,7 +148,7 @@ namespace JamesFrowen.CSP.Examples
             {
                 var clone = Instantiate(prefab);
                 SceneManager.MoveGameObjectToScene(clone, clientScene);
-                var manager = CreateManager(Client, null, clientScene);
+                ClientManager = CreateManager(Client, null, clientScene);
                 clone.GetComponent<Renderer>().enabled = ShowClient;
 
                 if (ShowNoNetwork)
@@ -148,7 +157,7 @@ namespace JamesFrowen.CSP.Examples
                     SceneManager.MoveGameObjectToScene(clone2, clientScene2);
                     var behaviour2 = clone2.GetComponent<IDebugPredictionLocalCopy>();
                     clone.GetComponent<IDebugPredictionLocalCopy>().Copy = behaviour2;
-                    behaviour2.Setup(new TickRunner() { TickRate = manager.TickRate });
+                    behaviour2.Setup(new TickRunner() { TickRate = ClientManager.TickRate });
                     clone2.GetComponent<Renderer>().material.color = Color.blue;
 
                     clone2.GetComponent<Renderer>().enabled = true;

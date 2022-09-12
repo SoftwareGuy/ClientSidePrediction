@@ -2,7 +2,7 @@ using System.Collections;
 using Mirage;
 using UnityEngine;
 
-namespace JamesFrowen.CSP
+namespace JamesFrowen.CSP.Debugging
 {
     public class TickDebuggerSetup : MonoBehaviour
     {

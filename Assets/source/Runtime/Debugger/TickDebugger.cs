@@ -1,7 +1,7 @@
 using System;
 using Mirage;
 
-namespace JamesFrowen.CSP
+namespace JamesFrowen.CSP.Debugging
 {
     public class TickDebugger : NetworkBehaviour
     {
@@ -49,7 +49,7 @@ namespace JamesFrowen.CSP
         private void OnStartServer()
         {
             tickRunner = new TickRunner();
-            tickRunner.onTick += ServerTick;
+            tickRunner.OnTick += ServerTick;
         }
 
         private void ServerTick(int tick)
@@ -63,7 +63,7 @@ namespace JamesFrowen.CSP
             tickRunner = new ClientTickRunner(
                 movingAverageCount: 50 * 5// 5 seconds
                 );
-            tickRunner.onTick += ClientTick;
+            tickRunner.OnTick += ClientTick;
             NetworkTime.PingInterval = 0;
         }
 

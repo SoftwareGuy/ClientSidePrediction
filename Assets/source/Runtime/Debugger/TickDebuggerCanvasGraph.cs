@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace JamesFrowen.CSP
+namespace JamesFrowen.CSP.Debugging
 {
     public class TickDebuggerCanvasGraph : TickDebuggerOutput
     {

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace JamesFrowen.CSP
+namespace JamesFrowen.CSP.Debugging
 {
     public class TickDebuggerGui : TickDebuggerOutput
     {
