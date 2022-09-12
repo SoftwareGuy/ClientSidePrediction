@@ -7,40 +7,33 @@
  * permission of James Frowen
  *******************************************************/
 
+using System.Collections.Generic;
+
 namespace JamesFrowen.CSP
 {
+
     /// <summary>
     /// A Ring buffer where each element can be set be set or not
     /// </summary>
     /// <remarks>
     /// This is useful when you need nullable struct types but dont want to require `where T is struct` on all types using this
     /// </remarks>
-    public struct NullableRingBuffer<T>
+    public class NullableRingBuffer<T> : RingBuffer<NullableRingBuffer<T>.Valid>
     {
-        private readonly ISnapshotDisposer<T> _disposer;
-        private readonly int _size;
-        private readonly Valid[] _buffer;
+        public NullableRingBuffer(int size) : base(size) { }
 
-        public NullableRingBuffer(int size) : this(size, null) { }
-        public NullableRingBuffer(int size, ISnapshotDisposer<T> disposer)
+        public new T Get(int index)
         {
-            _size = size;
-            _buffer = new Valid[size];
-            _disposer = disposer;
+            var item = base.Get(index);
+            if (item.HasValue)
+                return item.Value;
+            else
+                throw new KeyNotFoundException($"Value at {IndexToBuffer(index)} is null");
         }
 
-        private int IndexToBuffer(int index)
+        public T GetOrDefault(int index)
         {
-            //negative
-            if (index < 0)
-                index += _size;
-            return index % _size;
-        }
-
-
-        public T Get(int index)
-        {
-            var item = _buffer[IndexToBuffer(index)];
+            var item = base.Get(index);
             if (item.HasValue)
                 return item.Value;
             else
@@ -52,13 +45,13 @@ namespace JamesFrowen.CSP
         /// </summary>
         public bool IsValid(int index)
         {
-            var item = _buffer[IndexToBuffer(index)];
+            var item = base.Get(index);
             return item.HasValue;
         }
 
         public bool TryGet(int index, out T value)
         {
-            var item = _buffer[IndexToBuffer(index)];
+            var item = base.Get(index);
             if (item.HasValue)
             {
                 value = item.Value;
@@ -73,33 +66,17 @@ namespace JamesFrowen.CSP
 
         public void Set(int index, T value)
         {
-            if (_disposer != null)
-            {
-                // when we set a new value, we want to make sure old value is disposed correctly. 
-                // this allows for pooled objects to be used in the state
-                var oldItem = _buffer[IndexToBuffer(index)];
-                if (oldItem.HasValue)
-                {
-                    _disposer.DisposeState(oldItem.Value);
-                }
-            }
-
-            _buffer[IndexToBuffer(index)] = new Valid
+            base.Set(index, new Valid
             {
                 Value = value,
                 HasValue = true,
-            };
-        }
-
-        public void Clear(int index)
-        {
-            _buffer[IndexToBuffer(index)] = default;
+            });
         }
 
         // we can't use nullable here or we will have to limit T to struct
         // T should probably be limited to struct anyway, but seems like a pain to put `where T : struct`  everywhere
         // todo should we just make T a struct??
-        private struct Valid
+        public struct Valid
         {
             public T Value;
             public bool HasValue;
