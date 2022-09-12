@@ -221,7 +221,7 @@ MonoBehaviour:
   ServerObjectManager: {fileID: 1143117125}
   ClientObjectManager: {fileID: 1143117124}
   prefab: {fileID: 5961735504659903513, guid: 552c715ebac97b64abb2ced0e788f565, type: 3}
-  scene: Assets/ClientSidePrediction/Example1/PredictionScene.unity
+  scene: Assets/Example1/PredictionScene.unity
   ShowServer: 0
   ShowClient: 0
   ShowNoNetwork: 0
