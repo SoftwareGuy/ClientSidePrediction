@@ -42,6 +42,7 @@ namespace JamesFrowen.CSP
         private readonly Stopwatch stopwatch;
         private double tickTimer;
         private double lastFrame;
+        private bool _isRunning;
 
         /// <summary>
         /// keep track of last tick invoked on event, incase client jumps to line up with server
@@ -98,6 +99,11 @@ namespace JamesFrowen.CSP
         bool IPredictionTime.IsResimulation => false;
         float IPredictionTime.FixedTime => Tick * FixedDeltaTime;
 
+        public void SetRunning(bool running)
+        {
+            _isRunning = running;
+        }
+
         private double GetCurrentTime()
         {
             return stopwatch.Elapsed.TotalSeconds;
@@ -110,6 +116,11 @@ namespace JamesFrowen.CSP
             var max = now + (MaxFrameTime / 1000f);
             var delta = now - lastFrame;
             lastFrame = now;
+
+            // store last frame above even if we are not running
+            // so that when we start running again the delta will not be huge
+            if (!_isRunning)
+                return;
 
             BeforeAllTicks?.Invoke();
 
