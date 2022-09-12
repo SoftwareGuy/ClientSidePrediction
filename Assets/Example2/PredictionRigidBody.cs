@@ -24,30 +24,31 @@ namespace JamesFrowen.CSP.Example2
             body = GetComponent<Rigidbody>();
         }
 
-        public override void ApplyState(ObjectState state)
+        public override void AfterStateChanged()
         {
-            body.position = state.position;
-            body.rotation = state.rotation;
-            body.velocity = state.velocity;
-            body.angularVelocity = state.angularVelocity;
+            body.position = State.Position;
+            body.rotation = State.Rotation;
+            body.velocity = State.Velocity;
+            body.angularVelocity = State.AngularVelocity;
         }
 
-        public override void ResimulationTransition(ObjectState before, ObjectState after)
+        public override ObjectState ResimulationTransition(ObjectState before, ObjectState after)
         {
             var t = ResimulateLerp;
             ObjectState state = default;
-            state.position = Vector3.Lerp(before.position, after.position, t);
-            state.rotation = Quaternion.Slerp(before.rotation, after.rotation, t);
-            state.velocity = Vector3.Lerp(before.velocity, after.velocity, t);
-            state.angularVelocity = Vector3.Lerp(before.angularVelocity, after.angularVelocity, t);
-            ApplyState(state);
+            state.Position = Vector3.Lerp(before.Position, after.Position, t);
+            state.Rotation = Quaternion.Slerp(before.Rotation, after.Rotation, t);
+            state.Velocity = Vector3.Lerp(before.Velocity, after.Velocity, t);
+            state.AngularVelocity = Vector3.Lerp(before.AngularVelocity, after.AngularVelocity, t);
+            return state;
         }
 
-        public override ObjectState GatherState()
+        public override void AfterTick()
         {
-            return new ObjectState(body);
+            State.Position = body.position;
+            State.Rotation = body.rotation;
+            State.Velocity = body.velocity;
+            State.AngularVelocity = body.angularVelocity;
         }
-
-        public override void NetworkFixedUpdate() { }
     }
 }

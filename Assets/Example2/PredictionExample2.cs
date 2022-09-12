@@ -7,6 +7,7 @@
  * permission of James Frowen
  *******************************************************/
 
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Mirage;
 using Mirage.Logging;
@@ -28,47 +29,42 @@ namespace JamesFrowen.CSP.Example2
             body = GetComponent<Rigidbody>();
         }
 
-        public override void ApplyInputs(InputState input, InputState previous)
+        public override void ApplyInputs(NetworkInputs<InputState> inputs)
         {
+            var current = inputs.Current;
+
             // normalised so that speed isn't faster if moving diagonal
-            var move = new Vector3(x: input.Horizontal, y: 0, z: input.Vertical).normalized;
+            var move = new Vector3(x: current.Horizontal, y: 0, z: current.Vertical).normalized;
 
             var topOfCube = transform.position + Vector3.up * .5f;
             body.AddForceAtPosition(speed * move, topOfCube, ForceMode.Acceleration);
         }
 
-        public override void NetworkFixedUpdate()
+        public override void AfterStateChanged()
         {
-            // no extra physics, rigidbody will apply its own gravity
+            body.position = State.Position;
+            body.rotation = State.Rotation;
+            body.velocity = State.Velocity;
+            body.angularVelocity = State.AngularVelocity;
         }
 
-        public override void ApplyState(ObjectState state)
+        public override void AfterTick()
         {
-            body.position = state.position;
-            body.rotation = state.rotation;
-            body.velocity = state.velocity;
-            body.angularVelocity = state.angularVelocity;
+            State.Position = body.position;
+            State.Rotation = body.rotation;
+            State.Velocity = body.velocity;
+            State.AngularVelocity = body.angularVelocity;
         }
-        public override void ResimulationTransition(ObjectState before, ObjectState after)
+
+        public override ObjectState ResimulationTransition(ObjectState before, ObjectState after)
         {
             var t = ResimulateLerp;
             ObjectState state = default;
-            state.position = Vector3.Lerp(before.position, after.position, t);
-            state.rotation = Quaternion.Slerp(before.rotation, after.rotation, t);
-            state.velocity = Vector3.Lerp(before.velocity, after.velocity, t);
-            state.angularVelocity = Vector3.Lerp(before.angularVelocity, after.angularVelocity, t);
-            ApplyState(state);
-        }
-
-        public override ObjectState GatherState()
-        {
-            return new ObjectState(body);
-        }
-
-        public override InputState MissingInput(InputState previous, int previousTick, int currentTick)
-        {
-            // just copy old input, It is likely that missing input is just same as previous
-            return previous;
+            state.Position = Vector3.Lerp(before.Position, after.Position, t);
+            state.Rotation = Quaternion.Slerp(before.Rotation, after.Rotation, t);
+            state.Velocity = Vector3.Lerp(before.Velocity, after.Velocity, t);
+            state.AngularVelocity = Vector3.Lerp(before.AngularVelocity, after.AngularVelocity, t);
+            return state;
         }
 
         public override InputState GetInput()
@@ -93,7 +89,7 @@ namespace JamesFrowen.CSP.Example2
         void IDebugPredictionLocalCopy.NoNetworkApply(object _input)
         {
             var input = (InputState)_input;
-            ApplyInputs(input, noNetworkPrevious);
+            ApplyInputs(new NetworkInputs<InputState>(input, noNetworkPrevious));
             NetworkFixedUpdate();
             gameObject.scene.GetPhysicsScene().Simulate(PredictionTime.FixedDeltaTime);
             noNetworkPrevious = input;
@@ -116,7 +112,7 @@ namespace JamesFrowen.CSP.Example2
             var renderer = cube.GetComponent<Renderer>();
             renderer.material = Instantiate(mat);
             _ = changeColorOverTime(cube, renderer.material, color);
-            cube.transform.SetPositionAndRotation(state.position, state.rotation);
+            cube.transform.SetPositionAndRotation(state.Position, state.Rotation);
         }
 
         private async Task changeColorOverTime(GameObject cube, Material material, Color baseColor)
@@ -156,23 +152,12 @@ namespace JamesFrowen.CSP.Example2
         }
     }
 
-    [NetworkMessage]
+    [StructLayout(LayoutKind.Explicit, Size = 52)]
     public struct ObjectState
     {
-        public bool Valid;
-        public Vector3 position;
-        [QuaternionPack(10)]
-        public Quaternion rotation;
-        public Vector3 velocity;
-        public Vector3 angularVelocity;
-
-        public ObjectState(Rigidbody body)
-        {
-            position = body.position;
-            rotation = body.rotation;
-            velocity = body.velocity;
-            angularVelocity = body.angularVelocity;
-            Valid = true;
-        }
+        [FieldOffset(0)] public Vector3 Position;
+        [FieldOffset(12)] public Quaternion Rotation;
+        [FieldOffset(28)] public Vector3 Velocity;
+        [FieldOffset(40)] public Vector3 AngularVelocity;
     }
 }

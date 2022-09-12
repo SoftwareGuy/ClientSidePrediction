@@ -7,6 +7,7 @@
  * permission of James Frowen
  *******************************************************/
 
+using System.Runtime.InteropServices;
 using Mirage;
 using Mirage.Logging;
 using UnityEngine;
@@ -25,45 +26,42 @@ namespace JamesFrowen.CSP.Example1
             body = GetComponent<Rigidbody>();
         }
 
-        public override void ApplyInputs(InputState input, InputState previous)
+        public override void ApplyInputs(NetworkInputs<InputState> inputs)
         {
-            var move = input.Horizontal * new Vector3(1, .25f /*small up force so it can move along floor*/, 0);
+            var previous = inputs.Previous;
+            var current = inputs.Current;
+
+            var move = current.Horizontal * new Vector3(1, .25f /*small up force so it can move along floor*/, 0);
             body.AddForce(speed * move, ForceMode.Acceleration);
-            if (input.jump && !previous.jump)
+            if (current.jump && !previous.jump)
             {
                 body.AddForce(Vector3.up * 10, ForceMode.Impulse);
             }
         }
+
         public override void NetworkFixedUpdate()
         {
             // stronger gravity when moving down
             float gravity = body.velocity.y < 0 ? 3 : 1;
             body.AddForce(gravity * Physics.gravity, ForceMode.Acceleration);
             body.velocity += (gravity * Physics.gravity) * PredictionTime.FixedDeltaTime;
-        }
 
-        public override void ApplyState(ObjectState state)
-        {
-            body.position = state.position;
-            body.velocity = state.velocity;
             body.rotation = Quaternion.identity;
             body.angularVelocity = Vector3.zero;
         }
-        public override void ResimulationTransition(ObjectState current, ObjectState next)
+
+        public override void AfterTick()
         {
-            // no smoothing
+            State.Position = body.position;
+            State.Velocity = body.velocity;
         }
 
-        public override ObjectState GatherState()
+        public override void AfterStateChanged()
         {
-            return new ObjectState(body.position, body.velocity);
+            body.position = State.Position;
+            body.velocity = State.Velocity;
         }
 
-        public override InputState MissingInput(InputState previous, int previousTick, int currentTick)
-        {
-            // just copy old input, It is likely that missing input is just same as previous
-            return previous;
-        }
 
         public override InputState GetInput()
         {
@@ -87,7 +85,7 @@ namespace JamesFrowen.CSP.Example1
         void IDebugPredictionLocalCopy.NoNetworkApply(object _input)
         {
             var input = (InputState)_input;
-            ApplyInputs(input, noNetworkPrevious);
+            ApplyInputs(new NetworkInputs<InputState>(input, noNetworkPrevious));
             NetworkFixedUpdate();
             gameObject.scene.GetPhysicsScene().Simulate(PredictionTime.FixedDeltaTime);
             noNetworkPrevious = input;
@@ -112,18 +110,10 @@ namespace JamesFrowen.CSP.Example1
         public int Horizontal => (right ? 1 : 0) - (left ? 1 : 0);
     }
 
-    [NetworkMessage]
+    [StructLayout(LayoutKind.Explicit, Size = 24)]
     public struct ObjectState
     {
-        public readonly bool Valid;
-        public readonly Vector3 position;
-        public readonly Vector3 velocity;
-
-        public ObjectState(Vector3 position, Vector3 velocity)
-        {
-            this.position = position;
-            this.velocity = velocity;
-            Valid = true;
-        }
+        [FieldOffset(0)] public Vector3 Position;
+        [FieldOffset(12)] public Vector3 Velocity;
     }
 }
