@@ -1,3 +1,21 @@
+# [1.0.0-beta.5](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.4...v1.0.0-beta.5) (2022-09-15)
+
+
+### Features
+
+* adding class to help with random ([ec361fc](https://github.com/James-Frowen/ClientSidePrediction/commit/ec361fc3e9b8b63b54bd13bd7a10cace4ffe4744))
+* adding more events for tick runner ([8f5c494](https://github.com/James-Frowen/ClientSidePrediction/commit/8f5c494764856924a9ee185ec8e397d4e54f742f))
+* adding networkbool ([3a6c63c](https://github.com/James-Frowen/ClientSidePrediction/commit/3a6c63c9c06f5939690480177b00284f7b7cba69))
+* adding option to pause tick runner ([6fd9fbe](https://github.com/James-Frowen/ClientSidePrediction/commit/6fd9fbe7c998f8117ac2e403c7c47465af81472f))
+* adding ring buffer class ([3d22846](https://github.com/James-Frowen/ClientSidePrediction/commit/3d22846e22f4d702269cf4b9483d902bebf43890))
+* adding struct to hold current and previous input states ([9ccb81f](https://github.com/James-Frowen/ClientSidePrediction/commit/9ccb81f96522e44ce6ccab245a62bf1928bcab54))
+* delta snapshot and other small changes ([e21ac62](https://github.com/James-Frowen/ClientSidePrediction/commit/e21ac6222d8b60a8d26caa859eeda8f93883851f))
+
+
+### BREAKING CHANGES
+
+* lots of changes see Update-beta5.md for main breaking changes
+
 # [1.0.0-beta.4](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.3...v1.0.0-beta.4) (2022-08-08)
 
 
