@@ -7,11 +7,15 @@
  * permission of James Frowen
  *******************************************************/
 
+using JamesFrowen.DeltaSnapshot;
 using Mirage.Serialization;
 using UnityEngine;
 
 namespace JamesFrowen.CSP
 {
+    /// <summary>
+    /// Used to run physics simulate
+    /// </summary>
     public interface IPredictionSimulation
     {
         void Simulate(float fixedDelta);
@@ -59,7 +63,6 @@ namespace JamesFrowen.CSP
         void AfterResimulate();
         void BeforeResimulate();
 
-        void ReceiveState(NetworkReader reader, int tick);
         void Simulate(int tick);
         void InputTick(int clientLastSim);
         void WriteInput(NetworkWriter writer, int tick);
@@ -68,7 +71,7 @@ namespace JamesFrowen.CSP
     internal interface IServerController
     {
         void Tick(int tick);
-        void WriteState(NetworkWriter writer, int tick);
+
         void ReceiveHostInput<TInput>(int tick, TInput _input);
         void SetHostMode();
         void ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick);
@@ -87,7 +90,23 @@ namespace JamesFrowen.CSP
         void CreateAfterImage(object state, Color color);
     }
 
-    internal interface IPredictionBehaviour
+    public interface IPredictionUpdates
+    {
+        /// <summary>
+        /// What order callbacks should be called for.
+        /// <para>Lower numbers will be called first</para>
+        /// </summary>
+        int Order { get; }
+
+        IPredictionTime PredictionTime { get; set; }
+
+        // todo, rename to early/late
+        void InputUpdate();
+        void NetworkFixedUpdate();
+        void VisualUpdate();
+    }
+
+    internal interface IPredictionBehaviour : IPredictionUpdates, ISnapshotBehaviour
     {
         ServerManager ServerManager { get; }
         ClientManager ClientManager { get; }
@@ -97,11 +116,28 @@ namespace JamesFrowen.CSP
 
         bool HasInput { get; }
 
-        void ServerSetup(ServerManager serverManager, IPredictionTime time);
-        void ClientSetup(ClientManager clientManager, IPredictionTime time);
+        /// <summary>
+        /// Called after state value has been changed
+        /// <para>used to update any non-network state, like transform or rigidbody</para>
+        /// </summary>
+        void AfterStateChanged();
+
+        /// <summary>
+        /// Called after FixedUpdate and Physics.sim
+        /// <para>use to update state from any non-network state, like using transform or rigidbody to set state.position</para>
+        /// </summary>
+        void AfterTick();
+
+
+        void ServerSetup(ServerManager serverManager, int buffeSize);
+        void ClientSetup(ClientManager clientManager, int buffeSize);
         void CleanUp();
+
+        // used for debugging
+        object Debug_StateFromPtr();
     }
 
+    [System.Obsolete("Avoid state that isn't fixed size", true)]
     public interface ISnapshotDisposer<TState>
     {
         void DisposeState(TState state);

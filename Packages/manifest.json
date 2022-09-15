@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.miragenet.mirage": "126.0.1",
+    "com.miragenet.mirage": "https://github.com/MirageNet/Mirage.git?path=/Assets/Mirage#v128.2.0",
     "com.unity.collab-proxy": "1.2.16",
     "com.unity.ide.rider": "1.1.4",
     "com.unity.ide.vscode": "1.2.2",

@@ -7,7 +7,6 @@
  * permission of James Frowen
  *******************************************************/
 
-using System;
 using Mirage.Logging;
 using Mirage.SocketLayer;
 
@@ -15,7 +14,9 @@ namespace JamesFrowen.CSP
 {
     public interface ITickNotifyTracker
     {
-        int LastAckedTick { get; set; }
+        int? LastAckedTick { get; }
+        void SetLastAcked(int tick);
+        void ClearLastAcked();
     }
 
     public class TickNotifyToken : INotifyCallBack
@@ -35,7 +36,12 @@ namespace JamesFrowen.CSP
         public void OnDelivered()
         {
             // take highest value of current ack and new ack
-            tracker.LastAckedTick = Math.Max(tracker.LastAckedTick, tick);
+
+            if (tracker != null)
+            {
+                tracker.SetLastAcked(tick);
+            }
+
             pool.Put(this);
         }
 

@@ -8,6 +8,8 @@
  *******************************************************/
 
 using System;
+using System.Runtime.InteropServices;
+using JamesFrowen.DeltaSnapshot;
 using Mirage;
 using Mirage.Events;
 
@@ -17,31 +19,34 @@ namespace JamesFrowen.CSP
     /// Placeholder input for non-input class
     /// Use never be used by scripts
     /// </summary>
-    public struct NoInputs { }
+    [StructLayout(LayoutKind.Explicit, Size = 0)]
+    public struct NoValues { }
 
     /// <summary>
     /// Base class for Client side prediction for objects without input, like physics objects in a scene.
     /// </summary>
     /// <typeparam name="TState"></typeparam>
-    public abstract class PredictionBehaviour<TState> : PredictionBehaviourBase<NoInputs, TState>
+    public abstract class PredictionBehaviour<TState> : PredictionBehaviourBase<NoValues, TState> where TState : unmanaged
     {
         public sealed override bool HasInput => false;
-        public sealed override NoInputs GetInput() => throw new NotSupportedException();
-        public sealed override NoInputs MissingInput(NoInputs previous, int previousTick, int currentTick) => throw new NotSupportedException();
-        public sealed override void ApplyInputs(NoInputs input, NoInputs previous) => throw new NotSupportedException();
+        public sealed override NoValues GetInput() => throw new NotSupportedException();
+        public sealed override NoValues MissingInput(NoValues previous, int previousTick, int currentTick) => throw new NotSupportedException();
+        public sealed override void ApplyInputs(NetworkInputs<NoValues> inputs) => throw new NotSupportedException();
     }
 
     /// <summary>
     /// Base class for Client side prediction for objects with input, like player objects with movement.
     /// </summary>
     /// <typeparam name="TState"></typeparam>
-    public abstract class PredictionBehaviour<TInput, TState> : PredictionBehaviourBase<TInput, TState>
+    public abstract class PredictionBehaviour<TInput, TState> : PredictionBehaviourBase<TInput, TState> where TState : unmanaged
     {
         public sealed override bool HasInput => true;
     }
 
-    public abstract class PredictionBehaviourBase<TInput, TState> : NetworkBehaviour, IPredictionBehaviour
+    public abstract unsafe class PredictionBehaviourBase<TInput, TState> : SnapshotBehaviour<TState>, IPredictionBehaviour where TState : unmanaged
     {
+        public virtual int Order => 0;
+
         private ClientController<TInput, TState> _clientController;
         private ServerController<TInput, TState> _serverController;
         private ServerManager _serverManager;
@@ -79,6 +84,7 @@ namespace JamesFrowen.CSP
         /// </summary>
         /// <returns></returns>
         public abstract TInput GetInput();
+
         /// <summary>
         /// Called on Server if inputs are missing
         /// </summary>
@@ -98,23 +104,21 @@ namespace JamesFrowen.CSP
         }
 
         /// <summary>
-        /// Applies state to the object
-        /// </summary>
-        /// <param name="state"></param>
-        public abstract void ApplyState(TState state);
-        /// <summary>
-        /// Gets state from the object
-        /// </summary>
-        /// <returns></returns>
-        public abstract TState GatherState();
-
-        /// <summary>
         /// Called on Server and on clients with authority
         /// <para>Called before <see cref="NetworkFixedUpdate"/></para>
         /// </summary>
         /// <param name="input"></param>
         /// <param name="previous"></param>
-        public abstract void ApplyInputs(TInput input, TInput previous);
+        public abstract void ApplyInputs(NetworkInputs<TInput> inputs);
+
+        /// <summary>
+        /// Called before all network updates for the frame
+        /// <para>Should be used to poll inputs from unity and store for <see cref="GetInput"/></para>
+        /// <para>Only called on clients</para>
+        /// </summary>
+        /// <param name="fixedDelta"></param>
+        public virtual void InputUpdate() { }
+
         /// <summary>
         /// Modify the objects state. Called on all objects, use <see cref="ApplyInputs(TInput, TInput)"/> for effects on owned objects
         /// <para>Applies any physics/state logic to object here</para>
@@ -122,7 +126,28 @@ namespace JamesFrowen.CSP
         /// <para>Called once per tick on server and client, and for each resimulation step on client</para>
         /// </summary>
         /// <param name="fixedDelta"></param>
-        public abstract void NetworkFixedUpdate();
+        public virtual void NetworkFixedUpdate() { }
+
+        /// <summary>
+        /// Called after all network updates for the frame
+        /// <para>Use state here to update renderering, animation, or other visual effects</para>
+        /// <para>Only called on clients</para>
+        /// </summary>
+        /// <param name="fixedDelta"></param>
+        public virtual void VisualUpdate() { }
+
+        /// <summary>
+        /// Called after the state values are updated
+        /// <para>Use to set other (physics state) properties from the state value of this behaviour. For example setting transform position and rotation</para>
+        /// <para>Called after ResimulationTransition</para>
+        /// </summary>
+        public virtual void AfterStateChanged() { }
+
+        /// <summary>
+        /// Called after FixedUpdate and Physics.sim
+        /// <para>use to update state from any non-network state, like using transform or rigidbody to set state.position</para>
+        /// </summary>
+        public virtual void AfterTick() { }
 
         /// <summary>
         /// Used to disable ResimulationTransition
@@ -136,27 +161,26 @@ namespace JamesFrowen.CSP
         /// </summary>
         /// <param name="before">state before resimulation</param>
         /// <param name="after">state after resimulation</param>
-        public virtual void ResimulationTransition(TState before, TState after)
+        public virtual TState ResimulationTransition(TState before, TState after)
         {
+            return after;
             // by default nothing
             // after state will already be applied nothing needs to happen
 
             // you can override this function to apply moving between state before-re-simulatution and after.
         }
 
-        void IPredictionBehaviour.ServerSetup(ServerManager serverManager, IPredictionTime time)
+        void IPredictionBehaviour.ServerSetup(ServerManager serverManager, int buffeSize)
         {
-            PredictionTime = time;
             _serverManager = serverManager;
-            _serverController = new ServerController<TInput, TState>(ServerManager, this, Helper.BufferSize);
+            _serverController = new ServerController<TInput, TState>(ServerManager, this, buffeSize);
 
             _onPredictionSetup.Invoke();
         }
-        void IPredictionBehaviour.ClientSetup(ClientManager clientManager, IPredictionTime time)
+        void IPredictionBehaviour.ClientSetup(ClientManager clientManager, int buffeSize)
         {
-            PredictionTime = time;
             _clientManager = clientManager;
-            _clientController = new ClientController<TInput, TState>(this, Helper.BufferSize);
+            _clientController = new ClientController<TInput, TState>(this, buffeSize);
 
             _onPredictionSetup.Invoke();
         }
@@ -170,6 +194,12 @@ namespace JamesFrowen.CSP
             _clientManager = null;
 
             _onPredictionSetup.Reset();
+        }
+
+
+        object IPredictionBehaviour.Debug_StateFromPtr()
+        {
+            return *_statePtr;
         }
     }
 

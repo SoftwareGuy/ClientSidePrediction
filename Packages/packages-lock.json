@@ -8,14 +8,14 @@
       "url": "https://package.openupm.com"
     },
     "com.miragenet.mirage": {
-      "version": "126.0.1",
+      "version": "https://github.com/MirageNet/Mirage.git?path=/Assets/Mirage#v128.2.0",
       "depth": 0,
-      "source": "registry",
+      "source": "git",
       "dependencies": {
         "com.unity.nuget.mono-cecil": "1.10.1",
         "com.cysharp.unitask": "2.0.36"
       },
-      "url": "https://package.openupm.com"
+      "hash": "3d833b2b4af60fb1bb5a005053f79fb1d83c92ae"
     },
     "com.unity.collab-proxy": {
       "version": "1.2.16",

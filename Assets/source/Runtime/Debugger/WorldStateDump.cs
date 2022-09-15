@@ -9,41 +9,55 @@
 
 using System;
 using System.IO;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace JamesFrowen.CSP.Debugging
 {
     internal static unsafe class WorldStateDump
     {
-        private static byte[] buffer;
+        [ThreadStatic] private static byte[] buffer;
 
-        private static string PathFromTick(int tick) => Path.Combine(Application.persistentDataPath, "WorldState", $"{tick:D4}.data");
+        private static string _dir;
+        private static string Dir => _dir ?? (_dir = Path.Combine(Application.persistentDataPath, "WorldState"));
+        private static string PathFromTick(int tick) => Path.Combine(Dir, $"{tick:D4}.data");
 
         public static void ToFile(int tick, int* ptr, int intSize)
         {
-            if (buffer == null)
-                buffer = new byte[intSize];
-            if (buffer.Length < intSize * 4)
-                Array.Resize(ref buffer, intSize * 4);
-
-            fixed (byte* bPtr = &buffer[0])
-            {
-                var b = (int*)bPtr;
-
-                for (var i = 0; i < intSize; i++)
-                {
-                    b[i] = ptr[i];
-                }
-            }
-
-            var path = PathFromTick(tick);
-            CheckDir(path);
-            File.WriteAllBytes(path, buffer);
+            CheckDir(Dir);
+            UniTask.RunOnThreadPool(() => ToFileInternal(tick, ptr, intSize));
         }
 
-        private static void CheckDir(string path)
+        private static void ToFileInternal(int tick, int* ptr, int intSize)
         {
-            var dir = Path.GetDirectoryName(path);
+            try
+            {
+                if (buffer == null)
+                    buffer = new byte[intSize];
+                if (buffer.Length < intSize * 4)
+                    Array.Resize(ref buffer, intSize * 4);
+
+                fixed (byte* bPtr = &buffer[0])
+                {
+                    var b = (int*)bPtr;
+
+                    for (var i = 0; i < intSize; i++)
+                    {
+                        b[i] = ptr[i];
+                    }
+                }
+
+                var path = PathFromTick(tick);
+                File.WriteAllBytes(path, buffer);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        private static void CheckDir(string dir)
+        {
             if (Directory.Exists(dir))
                 return;
 
@@ -63,6 +77,11 @@ namespace JamesFrowen.CSP.Debugging
 
             if (!Directory.Exists(dir))
                 return;
+
+            // delete previous if exists
+            var dirPrev = dir + "_prev";
+            if (Directory.Exists(dirPrev))
+                Directory.Delete(dirPrev, true);
 
             Directory.Move(dir, dir + "_prev");
         }

@@ -8,6 +8,9 @@
  *******************************************************/
 
 using System;
+using System.Collections.Generic;
+using JamesFrowen.CSP.Alloc;
+using JamesFrowen.CSP.Debugging;
 using JamesFrowen.CSP.Simulations;
 using Mirage;
 using Mirage.Logging;
@@ -26,6 +29,8 @@ namespace JamesFrowen.CSP
     }
     public class PredictionManager : MonoBehaviour
     {
+        public const int DEFAULT_BUFFER_SIZE = 64;
+
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.PredictionManager");
 
         [Header("References")]
@@ -34,10 +39,6 @@ namespace JamesFrowen.CSP
 
         [Header("Simulation")]
         public SimulationMode physicsMode;
-
-        [Header("Start Settings")]
-        [Tooltip("Does the client start ready? or does it wait for SetReady to be called")]
-        [SerializeField] private bool clientIsReady = true;
 
         [Header("Tick Settings")]
         public float TickRate = 50;
@@ -52,6 +53,9 @@ namespace JamesFrowen.CSP
         private ServerManager serverManager;
         private TickRunner _tickRunner;
         private IPredictionSimulation _simulation;
+        private SimpleAlloc _simpleAlloc;
+        private bool _clientReady;
+        private bool _serverRunning;
 
         public TickRunner TickRunner => _tickRunner;
 
@@ -67,8 +71,11 @@ namespace JamesFrowen.CSP
             _simulation = simulation;
         }
 
+
         private void Start()
         {
+            _simpleAlloc = new SimpleAlloc();
+
             if (_simulation == null)
                 _simulation = new DefaultPredictionSimulation(physicsMode, gameObject.scene);
 
@@ -82,6 +89,8 @@ namespace JamesFrowen.CSP
             // clean up if this object is destroyed
             ServerStopped();
             ClientStopped(default);
+
+            _simpleAlloc.Dispose();
         }
 
         private void ServerStarted()
@@ -91,8 +100,7 @@ namespace JamesFrowen.CSP
                 TickRate = TickRate
             };
 
-            serverManager = new ServerManager(_simulation, _tickRunner, Server.World);
-            Server.MessageHandler.RegisterHandler<InputState>(serverManager.HandleInput);
+            serverManager = new ServerManager(_simulation, _tickRunner, Server.World, _simpleAlloc, Server.MessageHandler);
 
             // we need to add players because serverManager keeps track of a list internally
             Server.Connected.AddListener(serverManager.AddPlayer);
@@ -100,6 +108,8 @@ namespace JamesFrowen.CSP
 
             foreach (var player in Server.Players)
                 serverManager.AddPlayer(player);
+
+            SetServerRunning(_serverRunning);
         }
 
         private void ServerStopped()
@@ -131,11 +141,14 @@ namespace JamesFrowen.CSP
                 serverManager.SetHostMode();
 
                 // todo dont send world state to host
-                Client.MessageHandler.RegisterHandler<WorldState>((msg) => { });
+                Client.MessageHandler.RegisterHandler<DeltaWorldState>((msg) => { });
 
                 // todo clean up host stuff in ClientManager
                 // todo add throw check inside ClientManager/clientset up to throw if server is active (host mode just uses server controller+behaviour)
                 //clientManager = new ClientManager(hostMode, _simulation, _tickRunner, Client.World, Client.MessageHandler);
+
+                _tickRunner.BeforeAllTicks += () => InputUpdate(serverManager.Behaviours.GetUpdates());
+                _tickRunner.AfterAllTicks += () => VisualUpdate(serverManager.Behaviours.GetUpdates());
             }
             else
             {
@@ -150,9 +163,13 @@ namespace JamesFrowen.CSP
                 {
                     TickRate = TickRate,
                 };
-                clientManager = new ClientManager(_simulation, clientRunner, Client.World, Client.Player, Client.MessageHandler);
+                clientManager = new ClientManager(_simulation, clientRunner, Client.World, Client.Player, Client.MessageHandler, _simpleAlloc);
                 _tickRunner = clientRunner;
+                _tickRunner.BeforeAllTicks += () => InputUpdate(clientManager.Behaviours.GetUpdates());
+                _tickRunner.AfterAllTicks += () => VisualUpdate(clientManager.Behaviours.GetUpdates());
             }
+
+            SetClientReady(_clientReady);
         }
 
         private void ClientStopped(ClientStoppedReason _)
@@ -174,17 +191,53 @@ namespace JamesFrowen.CSP
             clientManager = null;
         }
 
+        /// <summary>
+        /// Sets if client is ready to send inputs and receive world state
+        /// </summary>
+        /// <param name="ready"></param>
         public void SetClientReady(bool ready)
         {
-            clientIsReady = ready;
+            if (logger.LogEnabled()) logger.Log($"SetClientReady: {ready}");
+
+            // store bool incase clientManager isn't created yet
+            _clientReady = ready;
             if (clientManager != null)
             {
                 clientManager.ReadyForWorldState = ready;
+                _tickRunner.SetRunning(ready);
             }
 
             if (ready && _tickRunner != null)
             {
                 ((ClientTickRunner)_tickRunner).ResetTime();
+            }
+        }
+
+        /// <summary>
+        /// Sets if server should be running tick and simulation
+        /// <para>while this is false tickrunner will be spawned</para>
+        /// </summary>
+        public void SetServerRunning(bool running)
+        {
+            if (logger.LogEnabled()) logger.Log($"SetServerRunning: {running}");
+
+            // store bool incase serverNanager isn't created yet
+            _serverRunning = running;
+            _tickRunner.SetRunning(running);
+        }
+
+        internal static void InputUpdate(IEnumerable<IPredictionUpdates> behaviours)
+        {
+            foreach (var behaviour in behaviours)
+            {
+                behaviour.InputUpdate();
+            }
+        }
+        internal static void VisualUpdate(IEnumerable<IPredictionUpdates> behaviours)
+        {
+            foreach (var behaviour in behaviours)
+            {
+                behaviour.VisualUpdate();
             }
         }
 
@@ -221,7 +274,7 @@ namespace JamesFrowen.CSP
                 if (DebugOutput.IsClient)
                 {
                     var clientRunner = (ClientTickRunner)TickRunner;
-                    DebugOutput.ClientTimeScale = clientRunner.TimeScale;
+                    DebugOutput.ClientTimeScale = clientRunner.TimeScaleMultiple;
                     DebugOutput.ClientDelayInTicks = clientRunner.Debug_DelayInTicks;
                     (var average, var stdDev) = clientRunner.Debug_RTT.GetAverageAndStandardDeviation();
                     DebugOutput.ClientRTT = average;

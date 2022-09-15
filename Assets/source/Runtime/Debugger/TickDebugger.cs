@@ -36,7 +36,7 @@ namespace JamesFrowen.CSP.Debugging
 
             if (IsClient)
             {
-                gui.ClientTimeScale = ClientRunner.TimeScale;
+                gui.ClientTimeScale = ClientRunner.TimeScaleMultiple;
 #if DEBUG
                 gui.ClientDelayInTicks = ClientRunner.Debug_DelayInTicks;
                 (var average, var stdDev) = ClientRunner.Debug_RTT.GetAverageAndStandardDeviation();

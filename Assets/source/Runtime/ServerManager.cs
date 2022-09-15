@@ -10,50 +10,118 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using JamesFrowen.CSP.Alloc;
+using JamesFrowen.CSP.Debugging;
+using JamesFrowen.DeltaSnapshot;
 using Mirage;
 using Mirage.Logging;
 using Mirage.Serialization;
 using UnityEngine;
 
-
 namespace JamesFrowen.CSP
 {
+    internal class LogValueTracker
+    {
+        public readonly List<int> Values = new List<int>();
+
+        public void AddValue(int value)
+        {
+            Values.Add(value);
+        }
+
+        public string Flush()
+        {
+            var sum = 0;
+            var min = int.MaxValue;
+            var max = int.MinValue;
+            var count = Values.Count;
+            for (var i = 0; i < count; i++)
+            {
+                var value = Values[i];
+                if (value < min)
+                    min = value;
+                if (value > max)
+                    max = value;
+
+                sum += value;
+            }
+            var avg = (float)sum / count;
+
+            Values.Clear();
+
+            var str = $"avg:{avg:0.0} min:{min} max:{max}";
+            return str;
+        }
+    }
+
     /// <summary>
     /// Controls all objects on server
     /// </summary>
-    internal class ServerManager
+    internal sealed class ServerManager
     {
+        private const int MESSAGE_HEADER = 26; // rough guess
+        private const int MAX_NOTIFY_SIZE = 1219 - MESSAGE_HEADER;
+
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerManager");
-        private readonly Dictionary<NetworkBehaviour, IPredictionBehaviour> behaviours = new Dictionary<NetworkBehaviour, IPredictionBehaviour>();
+        private static readonly ILogger verbose = LogFactory.GetLogger("JamesFrowen.CSP.ServerManager_Verbose", LogType.Exception);
+        private static StringBuilder _debugBuilder = new StringBuilder();
 
         // keep track of player list ourselves, so that we can use the SendToMany that does not allocate
         private readonly List<INetworkPlayer> _players;
         private readonly Dictionary<INetworkPlayer, PlayerTimeTracker> _playerTracker = new Dictionary<INetworkPlayer, PlayerTimeTracker>();
-        private readonly IPredictionSimulation simulation;
-        private readonly IPredictionTime time;
         private readonly NetworkWorld _world;
-        private bool hostMode;
+        private readonly IPredictionTime _time;
+        private readonly IPredictionSimulation _simulation;
+        private readonly PredictionCollection _behaviours;
+        private bool _hostMode;
+        private readonly int _bufferSize;
+        private readonly ISnapshotAllocator _allocator;
+        private readonly WorldSnapshot _worldSnapshot;
+        private readonly SnapshotGroupManager _groupManager;
 
-        internal int lastSim;
+        internal int _lastSim;
+
+        //delta snapshot
+        private LogValueTracker _deltaSizeTracker = new LogValueTracker();
+        private RingBuffer<WorldStateCopy> _worldStateCopy;
+        private NetworkWriter _payloadWriter;
+        private DeltaSnapshotWriter _deltaSnapshot;
+
+        // todo expose this value for debugging
+        private int _dumpToFileCount = 0;
 
 
         public PlayerTimeTracker Debug_FirstPlayertracker => _playerTracker.Values.FirstOrDefault();
+        public PredictionCollection Behaviours => _behaviours;
 
         internal void SetHostMode()
         {
-            hostMode = true;
-            foreach (var behaviour in behaviours)
+            _hostMode = true;
+            foreach (var behaviour in _behaviours.GetBehaviours())
             {
-                behaviour.Value.ServerController.SetHostMode();
+                behaviour.ServerController.SetHostMode();
             }
         }
 
-        public ServerManager(IPredictionSimulation simulation, TickRunner tickRunner, NetworkWorld world)
+        public ServerManager(
+            IPredictionSimulation simulation,
+            TickRunner tickRunner,
+            NetworkWorld world,
+            ISnapshotAllocator allocator,
+            IMessageReceiver messageReceiver,
+            int bufferSize = PredictionManager.DEFAULT_BUFFER_SIZE
+            )
         {
+            _bufferSize = bufferSize;
+            _allocator = allocator;
+            _groupManager = new SnapshotGroupManager(_allocator);
+            _worldSnapshot = new WorldSnapshot(_groupManager, bufferSize);
             _players = new List<INetworkPlayer>();
-            this.simulation = simulation;
-            time = tickRunner;
-            tickRunner.onTick += Tick;
+            _time = tickRunner;
+            _behaviours = new PredictionCollection(_time);
+            _simulation = simulation;
+            tickRunner.OnTick += Tick;
 
             _world = world;
             _world.onSpawn += OnSpawn;
@@ -64,6 +132,20 @@ namespace JamesFrowen.CSP
             {
                 OnSpawn(item);
             }
+
+            _worldStateCopy = new RingBuffer<WorldStateCopy>(bufferSize);
+            _payloadWriter = new NetworkWriter(1300, true);
+            for (var i = 0; i < bufferSize; i++)
+            {
+                _worldStateCopy.Set(i, new WorldStateCopy());
+            }
+            _deltaSnapshot = new DeltaSnapshotWriter(_allocator);
+
+            if (_dumpToFileCount > 0)
+                WorldStateDump.ClearFolder();
+
+            messageReceiver.RegisterHandler<InputState>(HandleInput);
+            messageReceiver.RegisterHandler<DeltaWorldStateFragmentedAck>(HandleFragmentedAck);
         }
 
         public void AddPlayer(INetworkPlayer player)
@@ -79,109 +161,328 @@ namespace JamesFrowen.CSP
 
         private void OnSpawn(NetworkIdentity identity)
         {
-            if (logger.LogEnabled()) logger.Log($"OnSpawn for {identity.NetId}");
-            foreach (var networkBehaviour in identity.NetworkBehaviours)
+            if (logger.LogEnabled()) logger.Log($"OnSpawn for netId={identity.NetId} name={identity.name}");
+
+            _behaviours.Add(identity, out var _, out var foundBehaviours);
+
+            var snapshots = GetBehaviourCache<ISnapshotBehaviour>.GetBehaviours(identity);
+            if (snapshots.Count == 0)
+                return;
+
+            // allocate here so that state can be used befor first tick
+            // in first tick this state will be copied to the GroupSnapshot for that tick
+            var group = _groupManager.CreateGroup(identity, snapshots.ToArray(), true);
+            _groupManager.AddGroup(group);
+            group.SetAsActivePtr();
+
+            foreach (var behaviour in foundBehaviours)
             {
-                // todo is using NetworkBehaviour as key ok? or does this need optimizing
-                if (networkBehaviour is IPredictionBehaviour behaviour)
-                {
-                    if (logger.LogEnabled()) logger.Log($"Found PredictionBehaviour for {identity.NetId} {behaviour.GetType().Name}");
-                    behaviours.Add(networkBehaviour, behaviour);
-                    behaviour.ServerSetup(this, time);
-                    if (hostMode)
-                        behaviour.ServerController.SetHostMode();
-                }
+                if (logger.LogEnabled()) logger.Log($"Found PredictionBehaviour for {identity.NetId} {behaviour.GetType().Name}");
+
+                behaviour.ServerSetup(this, _bufferSize);
+                if (_hostMode)
+                    behaviour.ServerController.SetHostMode();
             }
         }
+
         private void OnUnspawn(NetworkIdentity identity)
         {
-            foreach (var networkBehaviour in identity.NetworkBehaviours)
-            {
-                if (networkBehaviour is IPredictionBehaviour)
-                {
-                    behaviours.Remove(networkBehaviour);
-                }
-            }
+            _behaviours.Remove(identity, out var _, out var _);
+            _groupManager.Remove(identity, false);
         }
 
         public void Tick(int tick)
         {
-            if (logger.LogEnabled()) logger.Log($"Server tick {tick}");
-            simulate(tick);
+            if (verbose.LogEnabled()) verbose.Log($"Server tick {tick}");
+            _worldSnapshot.BeforeSimulate(tick);
+            Simulate(tick);
+            _lastSim = tick;
             SendState(tick);
         }
-
-        private void simulate(int tick)
+        public void Simulate(int tick)
         {
-            foreach (var behaviour in behaviours.Values)
+            foreach (var updates in _behaviours.GetUpdates())
             {
-                behaviour.ServerController.Tick(tick);
+                // if behaviour run full tick stuff, otherwise just call fixedupdate
+                if (updates is IPredictionBehaviour behaviour)
+                    behaviour.ServerController.Tick(tick);
+                else
+                    updates.NetworkFixedUpdate();
             }
-            simulation.Simulate(time.FixedDeltaTime);
-            lastSim = tick;
+            _simulation.Simulate(_time.FixedDeltaTime);
+            foreach (var behaviour in _behaviours.GetBehaviours())
+            {
+                behaviour.AfterTick();
+            }
         }
 
         private void SendState(int tick)
         {
             // todo get max size from config
-            const int MAX_SIZE = 1157; // max notify size
-            var msg = new WorldState() { tick = tick };
-            using (var writer = NetworkWriterPool.GetWriter())
+
+
+            CopyStateForTick(tick);
+
+            for (var i = 0; i < _players.Count; i++)
             {
-                var size = 0;
-                foreach (var kvp in behaviours)
+                var player = _players[i];
+                var tracker = _playerTracker[player];
+
+                var msg = new DeltaWorldState()
                 {
-                    writer.WriteNetworkBehaviour(kvp.Key);
-
-                    var behaviour = kvp.Value;
-                    behaviour.ServerController.WriteState(writer, tick);
-
-                    if (logger.LogEnabled())
-                    {
-                        var newSize = writer.ByteLength;
-                        var behaviourSize = newSize - size;
-                        size = newSize;
-                        logger.Log($"Writing Behaviour:{kvp.Key.name} NetId:{kvp.Key.NetId} size:{behaviourSize}");
-                    }
-
-                    if (writer.ByteLength > MAX_SIZE)
-                    {
-                        logger.LogError($"Can't send state over max size of {MAX_SIZE}.");
-                        return;
-                    }
-                }
-
-                var payload = writer.ToArraySegment();
-                for (var i = 0; i < _players.Count; i++)
-                {
-                    var player = _players[i];
-                    var tracker = _playerTracker[player];
-
-                    // dont send if not ready
-                    msg.state = tracker.ReadyForWorldState ? payload : default;
-
+                    Tick = tick,
+                    TimeScale = Time.timeScale == 1 ? default(float?) : Time.timeScale,
                     // set client time for each client, 
-                    // todo find way to avoid serialize multiple times
-                    msg.ClientTime = tracker.LastReceivedClientTime;
+                    ClientTime = tracker.LastReceivedClientTime,
+                };
 
-                    var token = TickNotifyToken.GetToken(tracker, tick);
-                    player.Send(msg, token);
+                if (tracker.ReadyForWorldState)
+                    SendPayload(tick, player, msg, tracker);
+                else
+                    SendNoPayload(tick, player, msg);
+            }
+        }
+
+        private unsafe void SendPayload(int tick, INetworkPlayer player, DeltaWorldState msg, PlayerTimeTracker tracker)
+        {
+            var fromTick = CalculateFromTick(tick, tracker);
+
+            var intSize = _worldStateCopy.Get(tick).IntSize;
+            // todo cache payload for (fromTick->tick) so we dont need to serialize it for each player (eg if 2 players are on same tick)
+            var payload = CreatePayload(fromTick, tick);
+
+            PayloadLogging(fromTick, intSize, payload);
+
+            msg.VsTick = fromTick;
+            msg.StateIntSize = intSize;
+            msg.DeltaState = payload;
+
+            // todo make mirage AckSystem public so const fields can be used
+            if (payload.Count <= MAX_NOTIFY_SIZE)
+            {
+                var token = TickNotifyToken.GetToken(tracker, tick);
+                player.Send(msg, token);
+            }
+            else
+            {
+                FragmentSend(player, msg);
+            }
+        }
+
+        private void FragmentSend(INetworkPlayer player, DeltaWorldState msg)
+        {
+            if (logger.WarnEnabled()) logger.LogWarning($"Payload size ({msg.DeltaState.Count} bytes) is over max Notify size ({MAX_NOTIFY_SIZE} bytes). using reliable-fragmented send instead");
+
+            // send as reliable, it will be fragmented but will reach the client
+            msg.Fragmented = true;
+            player.Send(msg);
+
+            // we can then mark this tick as acked because client will 100% get it
+        }
+        private void HandleFragmentedAck(INetworkPlayer player, DeltaWorldStateFragmentedAck msg)
+        {
+            var tracker = _playerTracker[player];
+            tracker.SetLastAcked(msg.Tick);
+        }
+
+
+        private unsafe void PayloadLogging(int? fromTick, int intSize, ArraySegment<byte> payload)
+        {
+            if (fromTick == null && intSize != 0 && logger.LogEnabled())
+                logger.Log($"Delta Write Vs Zero: Original Size:{intSize * 4} Compressed:{payload.Count}");
+
+            _deltaSizeTracker.AddValue(payload.Count);
+            if (_deltaSizeTracker.Values.Count > 60)
+            {
+                var str = _deltaSizeTracker.Flush();
+
+                if (logger.LogEnabled()) logger.Log($"Delta Write: Original Size:{intSize * 4} Delta:[{str}]");
+            }
+
+            if (verbose.LogEnabled())
+            {
+                fixed (byte* p = &payload.Array[0])
+                {
+                    var iPtr = (int*)p;
+                    _debugBuilder.Clear();
+                    for (var j = 0; j < payload.Count / 4; j++)
+                    {
+                        if (j != 0)
+                            _debugBuilder.Append(" ");
+                        _debugBuilder.Append(iPtr[j].ToString("X8"));
+                    }
+
+                    if (payload.Count % 4 != 0)
+                    {
+                        var last = (uint)iPtr[(payload.Count / 4)];
+                        var extraBytes = payload.Count % 4;
+                        var mask = ~(uint.MaxValue << (extraBytes * 8));
+                        var value = last & mask;
+
+                        if (payload.Count > 4)
+                            _debugBuilder.Append(" ");
+                        _debugBuilder.Append(last.ToString("X8"));
+                    }
+
+                    verbose.Log($"DeltaState:{payload.Count} bytes, Hex:[{_debugBuilder}]");
                 }
             }
         }
 
-        internal void HandleInput(INetworkPlayer player, InputState message)
+        private int? CalculateFromTick(int tick, PlayerTimeTracker tracker)
         {
-            var tracker = _playerTracker[player];
-            tracker.LastReceivedClientTime = Math.Max(tracker.LastReceivedClientTime, message.clientTime);
-            // check if inputs have arrived in time and in order, otherwise we can't do anything with them.
-            if (!ValidateInputTick(tracker, message.tick))
+            var fromTick = tracker.LastAckedTick;
+            if (fromTick.HasValue)
+            {
+                // too far part
+                if (tick - fromTick.Value >= _worldStateCopy.Count)
+                {
+                    fromTick = null;
+                }
+                else
+                {
+                    var toCopy = _worldStateCopy.Get(tick);
+                    var fromCopy = _worldStateCopy.Get(fromTick.Value);
+
+                    if (fromCopy.IntSize != toCopy.IntSize)
+                    {
+                        fromTick = null;
+                    }
+                }
+            }
+
+            return fromTick;
+        }
+
+        private static void SendNoPayload(int tick, INetworkPlayer player, DeltaWorldState msg)
+        {
+            // null tracker, dont track unless we send world state
+            var token = TickNotifyToken.GetToken(null, tick);
+            player.Send(msg, token);
+        }
+
+        private unsafe ArraySegment<byte> CreatePayload(int? fromTick, int toTick)
+        {
+            var writer = _payloadWriter;
+            writer.Reset();
+
+            var toCopy = _worldStateCopy.Get(toTick);
+            if (fromTick.HasValue)
+            {
+                // todo check distance from/to. If it is too big then we should just send full vs zero
+                var fromCopy = _worldStateCopy.Get(fromTick.Value);
+                Debug.Assert(toCopy.IntSize == fromCopy.IntSize);
+                _deltaSnapshot.WriteDelta(writer, toCopy.IntSize, fromCopy.Ptr, toCopy.Ptr);
+            }
+            else
+            {
+                _deltaSnapshot.WriteDeltaVsZero(writer, toCopy.IntSize, toCopy.Ptr);
+            }
+
+            return writer.ToArraySegment();
+        }
+
+        private unsafe void CopyStateForTick(int tick)
+        {
+            var tickSnapshot = _worldSnapshot.GetTick(tick);
+
+            var groups = tickSnapshot.Groups;
+            if (groups.Count == 0)
                 return;
 
-            tracker.ReadyForWorldState = message.ready;
+            var copy = _worldStateCopy.Get(tick);
+            CheckSize(groups, copy);
 
-            var length = message.length;
-            using (var reader = NetworkReaderPool.GetReader(message.payload, _world))
+            var writePtr = copy.Ptr;
+            foreach (var group in groups)
+            {
+                UnsafeHelper.Copy(group.Ptr, writePtr, group.IntSize);
+                writePtr += group.IntSize;
+
+
+                if (verbose.LogEnabled())
+                {
+                    Verbose_LogBehaviourState(writePtr, group);
+                }
+            }
+
+            if (verbose.WarnEnabled())
+            {
+                var previous = _worldStateCopy.Get(tick - 1);
+                if (previous.IntSize != copy.IntSize)
+                    verbose.LogWarning($"Delta Write: Size changed. From:{previous.IntSize * 4} To:{copy.IntSize * 4}");
+            }
+
+            if (tick < _dumpToFileCount)
+            {
+                WorldStateDump.ToFile(tick, copy.Ptr, copy.IntSize);
+            }
+        }
+
+        private static unsafe void Verbose_LogBehaviourState(int* writePtr, GroupSnapshot group)
+        {
+            var startPtr = writePtr - group.IntSize;
+            verbose.Log($"WriteGroup:{group.IntSize * 4} bytes, netId:{group.Identity.NetId}, Object:{group.Identity.name} Hex:[{*startPtr:X8}]");
+            startPtr += 1;
+
+            foreach (var snapshot in group.Snapshots)
+            {
+                var netBehaviour = (NetworkBehaviour)snapshot;
+                Debug.Assert(netBehaviour.NetId <= 0xffffff);
+                Debug.Assert(netBehaviour.ComponentIndex <= 0xff);
+
+                _debugBuilder.Clear();
+                for (var j = 0; j < snapshot.AllocationSizeInts; j++)
+                {
+                    if (j != 0)
+                        _debugBuilder.Append(" ");
+
+                    var value = startPtr[j];
+                    string intStr;
+                    // zero is a common value, so avoid format string
+                    if (value == 0)
+                        intStr = "00000000";
+                    else
+                        intStr = value.ToString("X8");
+                    _debugBuilder.Append(intStr);
+                }
+                verbose.Log($"WriteState:{snapshot.AllocationSizeInts * 4} bytes, Type:{snapshot.GetType()} Hex:[{_debugBuilder}]");
+                startPtr += snapshot.AllocationSizeInts;
+            }
+        }
+
+        private unsafe void CheckSize(IReadOnlyList<GroupSnapshot> groups, WorldStateCopy copy)
+        {
+            var total = 0;
+            for (var i = 0; i < groups.Count; i++)
+            {
+                var group = groups[i];
+                total += group.IntSize;
+            }
+
+            copy.CheckSize(_allocator, total);
+        }
+
+        private void HandleInput(INetworkPlayer player, InputState message)
+        {
+            var tracker = _playerTracker[player];
+            tracker.LastReceivedClientTime = Math.Max(tracker.LastReceivedClientTime, message.ClientTime);
+            // check if inputs have arrived in time and in order, otherwise we can't do anything with them.
+            if (!ValidateInputTick(tracker, message.Tick))
+                return;
+
+            tracker.ReadyForWorldState = message.Ready;
+
+            if (message.Ready)
+                HandleReadyInput(player, message, tracker);
+
+            tracker.lastReceivedInput = Mathf.Max(tracker.lastReceivedInput.GetValueOrDefault(), message.Tick);
+        }
+
+        private void HandleReadyInput(INetworkPlayer player, InputState message, PlayerTimeTracker tracker)
+        {
+            var length = message.NumberOfInputs;
+            using (var reader = NetworkReaderPool.GetReader(message.Payload, _world))
             {
                 // keep reading while there is atleast 1 byte
                 // netBehaviour will be alteast 1 byte
@@ -201,7 +502,7 @@ namespace JamesFrowen.CSP
                     if (!(networkBehaviour is IPredictionBehaviour behaviour))
                         throw new InvalidOperationException($"Networkbehaviour({networkBehaviour.NetId}, {networkBehaviour.ComponentIndex}) was not a IPredictionBehaviour");
 
-                    var inputTick = message.tick;
+                    var inputTick = message.Tick;
                     for (var i = 0; i < length; i++)
                     {
                         var t = inputTick - i;
@@ -210,7 +511,6 @@ namespace JamesFrowen.CSP
                 }
             }
 
-            tracker.lastReceivedInput = Mathf.Max(tracker.lastReceivedInput, message.tick);
         }
 
         private bool ValidateInputTick(PlayerTimeTracker tracker, int tick)
@@ -224,20 +524,18 @@ namespace JamesFrowen.CSP
             }
 
             // if lastTick is before last sim, then it is late and we can't use
-            if (tick >= lastSim)
+            if (tick >= _lastSim)
             {
-                if (logger.LogEnabled()) logger.Log($"received inputs for {tick}. lastSim:{lastSim}. early by {tick - lastSim}");
+                if (verbose.LogEnabled()) verbose.Log($"received inputs for {tick}. lastSim:{_lastSim}. early by {tick - _lastSim}");
                 return true;
             }
 
-            if (tracker.lastReceivedInput == Helper.NO_VALUE)
+            if (logger.LogEnabled())
             {
-                if (logger.LogEnabled()) logger.Log($"received inputs <color=red>Late</color> for {tick}, lastSim:{lastSim}. late by {lastSim - tick}. But was at start, so not a problem");
+                logger.Log($"received inputs <color=red>Late</color> for {tick}, lastSim:{_lastSim}. late by {_lastSim - tick}"
+                + (tracker.lastReceivedInput == null ? ". But was at start, so not a problem" : ""));
             }
-            else
-            {
-                if (logger.LogEnabled()) logger.Log($"received inputs <color=red>Late</color> for {tick}, lastSim:{lastSim}. late by {lastSim - tick}");
-            }
+
             return false;
         }
 
@@ -245,29 +543,40 @@ namespace JamesFrowen.CSP
         {
             // todo use this to collect metrics about client (eg ping, rtt, etc)
             public double LastReceivedClientTime;
-            public int lastReceivedInput = Helper.NO_VALUE;
-
-            public int LastAckedTick { get; set; }
+            public int? lastReceivedInput = null;
 
             public bool ReadyForWorldState;
+
+            public int? LastAckedTick { get; private set; }
+
+            public void SetLastAcked(int tick)
+            {
+                if (LastAckedTick.HasValue)
+                    LastAckedTick = Math.Max(LastAckedTick.Value, tick);
+                else
+                    LastAckedTick = tick;
+            }
+            public void ClearLastAcked()
+            {
+                LastAckedTick = null;
+            }
         }
     }
 
     /// <summary>
-    /// Controls 1 object on server
+    /// Controls 1 behaviour on server and host
     /// </summary>
     /// <typeparam name="TInput"></typeparam>
     /// <typeparam name="TState"></typeparam>
-    internal class ServerController<TInput, TState> : IServerController
+    internal class ServerController<TInput, TState> : IServerController where TState : unmanaged
     {
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerController");
         private readonly PredictionBehaviourBase<TInput, TState> behaviour;
         private readonly int _bufferSize;
         private readonly ServerManager _manager;
         private NullableRingBuffer<TInput> _inputBuffer;
-        private NullableRingBuffer<TState> _stateBuffer;
         private (int tick, TInput input) lastValidInput;
-        private int lastReceived = Helper.NO_VALUE;
+        private int? lastReceived = null;
         private bool hostMode;
         void IServerController.SetHostMode()
         {
@@ -280,9 +589,8 @@ namespace JamesFrowen.CSP
             this.behaviour = behaviour;
             _bufferSize = bufferSize;
 
-            _stateBuffer = new NullableRingBuffer<TState>(bufferSize, behaviour as ISnapshotDisposer<TState>);
             if (behaviour.UseInputs())
-                _inputBuffer = new NullableRingBuffer<TInput>(bufferSize, behaviour as ISnapshotDisposer<TInput>);
+                _inputBuffer = new NullableRingBuffer<TInput>(bufferSize);
             else // listen just incase auth is given late
                 behaviour.Identity.OnOwnerChanged.AddListener(OnOwnerChanged);
         }
@@ -290,25 +598,15 @@ namespace JamesFrowen.CSP
         private void OnOwnerChanged(INetworkPlayer newOwner)
         {
             // create buffer and remove listener
-            _inputBuffer = new NullableRingBuffer<TInput>(_bufferSize, behaviour as ISnapshotDisposer<TInput>);
+            _inputBuffer = new NullableRingBuffer<TInput>(_bufferSize);
             behaviour.Identity.OnOwnerChanged.RemoveListener(OnOwnerChanged);
-        }
-
-        void IServerController.WriteState(NetworkWriter writer, int tick)
-        {
-            var state = behaviour.GatherState();
-            _stateBuffer.Set(tick, state);
-            var startBit = writer.BitPosition;
-            writer.Write(state);
-            var endBit = writer.BitPosition;
-            if (logger.LogEnabled()) logger.Log($"WriteState: {((endBit - startBit) + 7) / 8} bytes, Object:{behaviour.name}, Type:{behaviour.GetType()}");
         }
 
         void IServerController.ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick)
         {
             var input = reader.Read<TInput>();
             // if new, and after last sim
-            if (inputTick > tracker.lastReceivedInput && inputTick > _manager.lastSim)
+            if (inputTick > tracker.lastReceivedInput && inputTick > _manager._lastSim)
             {
                 lastReceived = tracker.lastReceivedInput;
                 _inputBuffer.Set(inputTick, input);
@@ -328,7 +626,7 @@ namespace JamesFrowen.CSP
                 }
 
                 getValidInputs(tick, out var input, out var previous);
-                behaviour.ApplyInputs(input, previous);
+                behaviour.ApplyInputs(new NetworkInputs<TInput>(input, previous));
             }
 
             behaviour.NetworkFixedUpdate();
@@ -343,7 +641,7 @@ namespace JamesFrowen.CSP
             previous = default;
             // dont need to do anything till first is received
             // skip check hostmode, there are always inputs for hostmode
-            if (!hostMode && lastReceived == Helper.NO_VALUE)
+            if (!hostMode && (lastReceived == null))
                 return;
 
             getValidInput(tick, out var currentValid, out input);
