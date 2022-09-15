@@ -182,16 +182,3 @@ public override ObjectState ResimulationTransition(ObjectState current, ObjectSt
 }
 ```
 
-
-
-### ApplyState (removed)
-
-#### Before
-```cs
-
-```
-#### After
-```cs
-
-```
-
