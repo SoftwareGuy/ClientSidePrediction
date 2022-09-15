@@ -8,6 +8,7 @@ Assets/StreamingAssets/
 Assets/StreamingAssets.meta
 Assets/Resources
 Assets/Resources.meta
+WorldState/
 
 .sonarqube
 CodeCoverage
