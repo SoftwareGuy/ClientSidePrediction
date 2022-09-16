@@ -1,3 +1,15 @@
+# [1.0.0-beta.6](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.5...v1.0.0-beta.6) (2022-09-16)
+
+
+### Bug Fixes
+
+* resetting tickTimer after we run too many ticks in 1 frame ([abc3f38](https://github.com/James-Frowen/ClientSidePrediction/commit/abc3f387144eaf2c4eb895ac7d21b874f117222d))
+
+
+### Features
+
+* **Debug:** adding helper class for showing after images ([cd0bab1](https://github.com/James-Frowen/ClientSidePrediction/commit/cd0bab1aa177c884f5d08e8db8dd68a5d40a5ad1))
+
 # [1.0.0-beta.5](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.4...v1.0.0-beta.5) (2022-09-15)
 
 
