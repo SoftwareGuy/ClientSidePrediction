@@ -162,6 +162,11 @@ namespace JamesFrowen.CSP
                 if (_tick > startTick + MaxTickPerFrame)
                 {
                     if (logger.WarnEnabled()) logger.LogWarning($"Reached max ticks per frame ({MaxTickPerFrame}). Time taken {(GetCurrentTime() - now) * 1000f}ms");
+
+                    // todo check if resetting this is bad
+                    // in single player mode it should be fine as we will just continue as normal from new time
+                    // in multiplayer it might cause syncing problems 
+                    tickTimer = 0;
                     break;
                 }
             }
