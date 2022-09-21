@@ -99,20 +99,20 @@ namespace JamesFrowen.CSP.Example2
         #region IDebugPredictionAfterImage
         [SerializeField] private bool _afterImage;
         private static Transform AfterImageParent;
-        void IDebugPredictionAfterImage.CreateAfterImage(object _state, Color color)
+        bool IDebugPredictionAfterImage.ShowAfterImage => _afterImage;
+        unsafe void IDebugPredictionAfterImage.CreateAfterImage(void* _state, Color color)
         {
-            if (!_afterImage) return;
             if (AfterImageParent == null)
                 AfterImageParent = new GameObject("AfterImage").transform;
 
-            var state = (ObjectState)_state;
+            var state = (ObjectState*)_state;
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.transform.parent = AfterImageParent;
             var mat = GetComponent<Renderer>().sharedMaterial;
             var renderer = cube.GetComponent<Renderer>();
             renderer.material = Instantiate(mat);
             _ = changeColorOverTime(cube, renderer.material, color);
-            cube.transform.SetPositionAndRotation(state.Position, state.Rotation);
+            cube.transform.SetPositionAndRotation(state->Position, state->Rotation);
         }
 
         private async Task changeColorOverTime(GameObject cube, Material material, Color baseColor)

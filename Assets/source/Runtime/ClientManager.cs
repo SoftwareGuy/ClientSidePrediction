@@ -321,8 +321,11 @@ namespace JamesFrowen.CSP
             {
                 behaviour.AfterStateChanged();
 
-                if (behaviour is IDebugPredictionAfterImage debug)
-                    debug.CreateAfterImage(behaviour.Debug_StateFromPtr(), new Color(1f, 0.4f, 0f));
+                unsafe
+                {
+                    if (behaviour is IDebugPredictionAfterImage debug && debug.ShowAfterImage)
+                        debug.CreateAfterImage(behaviour.Ptr, new Color(1f, 0.4f, 0f));
+                }
             }
 
             // step forward Applying inputs
@@ -521,8 +524,8 @@ namespace JamesFrowen.CSP
                 var next = *behaviour._statePtr;
                 *behaviour._statePtr = behaviour.ResimulationTransition(beforeResimulateState, next);
                 behaviour.AfterStateChanged();
-                if (behaviour is IDebugPredictionAfterImage debug)
-                    debug.CreateAfterImage(next, new Color(0, 0.4f, 1f));
+                if (behaviour is IDebugPredictionAfterImage debug && debug.ShowAfterImage)
+                    debug.CreateAfterImage(&next, new Color(0, 0.4f, 1f));
 
                 beforeResimulateState = default;
                 hasBeforeResimulateState = false;

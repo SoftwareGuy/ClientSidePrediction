@@ -87,7 +87,8 @@ namespace JamesFrowen.CSP
 
     public interface IDebugPredictionAfterImage
     {
-        void CreateAfterImage(object state, Color color);
+        bool ShowAfterImage { get; }
+        unsafe void CreateAfterImage(void* state, Color color);
     }
 
     public interface IPredictionUpdates
@@ -132,9 +133,6 @@ namespace JamesFrowen.CSP
         void ServerSetup(ServerManager serverManager, int buffeSize);
         void ClientSetup(ClientManager clientManager, int buffeSize);
         void CleanUp();
-
-        // used for debugging
-        object Debug_StateFromPtr();
     }
 
     [System.Obsolete("Avoid state that isn't fixed size", true)]

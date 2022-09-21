@@ -195,12 +195,6 @@ namespace JamesFrowen.CSP
 
             _onPredictionSetup.Reset();
         }
-
-
-        object IPredictionBehaviour.Debug_StateFromPtr()
-        {
-            return *_statePtr;
-        }
     }
 
     internal static class PredictionBehaviourExtensions
