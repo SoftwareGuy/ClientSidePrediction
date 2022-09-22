@@ -240,7 +240,16 @@ namespace JamesFrowen.CSP
             _RTTAverage = new SimpleMovingAverage(movingAverageCount);
 
 #if DEBUG
-            _writer = new StreamWriter(Path.Combine(Application.persistentDataPath, "ClientTickRunner.csv")) { AutoFlush = true };
+            try
+            {
+                _writer = new StreamWriter(Path.Combine(Application.persistentDataPath, "ClientTickRunner.csv")) { AutoFlush = true };
+            }
+            catch (IOException e)
+            {
+                if (logger.WarnEnabled()) logger.LogWarning($"Fail to create ClientTickRunner.csv because: {e}");
+                // clear ref just incase. It will stop Debug() from trying to write 
+                _writer = null;
+            }
             Debug("serverTick,serverGuess,localTick,delayInTicks,delayInSeconds,delayFromLag,delayFromJitter,diff,newRTT,intialized");
 #endif
         }
@@ -411,6 +420,9 @@ namespace JamesFrowen.CSP
 
         private void Debug(string line)
         {
+            if (_writer == null)
+                return;
+
             _writer.WriteLine(line);
         }
 #endif
