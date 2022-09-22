@@ -42,6 +42,11 @@ namespace JamesFrowen.CSP
                 field = value.Value;
             }
         }
+
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
     }
 
 
