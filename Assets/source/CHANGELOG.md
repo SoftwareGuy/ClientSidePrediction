@@ -1,3 +1,15 @@
+# [1.0.0-beta.7](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.6...v1.0.0-beta.7) (2022-09-22)
+
+
+### Bug Fixes
+
+* catching exception when starting 2 players ([678e38e](https://github.com/James-Frowen/ClientSidePrediction/commit/678e38ebeddade94befa861ed3d5e6b5b39bd74d))
+
+
+### Features
+
+* adding tostring for networkbool ([e59a255](https://github.com/James-Frowen/ClientSidePrediction/commit/e59a255b3299c67371c721ef42c6842c11369369))
+
 # [1.0.0-beta.6](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.5...v1.0.0-beta.6) (2022-09-16)
 
 
