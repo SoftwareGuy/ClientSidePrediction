@@ -26,6 +26,8 @@ namespace JamesFrowen.DeltaSnapshot
 
         internal TState* _statePtr;
 
+        protected TState* StatePtr => _statePtr;
+
         // todo test if this throws NRE when ptr is 0
         protected ref TState State
         {
@@ -37,6 +39,12 @@ namespace JamesFrowen.DeltaSnapshot
                 return ref *_statePtr;
             }
         }
+
+        // todo add way to access state by tick
+        //protected TState GetStateAtTick(int tick)
+        //{
+
+        //}
 
         private void ThrowNullState()
         {
