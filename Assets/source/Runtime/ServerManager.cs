@@ -394,9 +394,13 @@ namespace JamesFrowen.CSP
             CheckSize(groups, copy);
 
             var writePtr = copy.Ptr;
-            foreach (var group in groups)
+            for (var i = 0; i < groups.Count; i++)
             {
+                var group = groups[i];
                 UnsafeHelper.Copy(group.Ptr, writePtr, group.IntSize);
+
+                ValidateCopy(writePtr, groups, i);
+
                 writePtr += group.IntSize;
 
 
@@ -416,6 +420,17 @@ namespace JamesFrowen.CSP
             if (tick < _dumpToFileCount)
             {
                 WorldStateDump.ToFile(tick, copy.Ptr, copy.IntSize);
+            }
+        }
+
+        private static unsafe void ValidateCopy(int* writePtr, IReadOnlyList<GroupSnapshot> groups, int index)
+        {
+            var header = (GroupSnapshot.Header*)writePtr;
+            if (header->NetId == 0)
+            {
+                var previous = index > 0 ? groups[index - 1] : default;
+                var lastBehaviour = previous?.Snapshots.Last();
+                throw new Exception($"Write netid as 0 at snapshotPosition for group:[index={index},name={groups[index].name}] previousGroup:[name={previous?.name}] lastBehaviour in previous:{lastBehaviour?.GetType()}");
             }
         }
 
