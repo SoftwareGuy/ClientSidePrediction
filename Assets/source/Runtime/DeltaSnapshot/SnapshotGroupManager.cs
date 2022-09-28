@@ -161,7 +161,7 @@ namespace JamesFrowen.DeltaSnapshot
             }
 
             // +1 for netid
-            intSize += 1;
+            intSize += GroupSnapshot.Header.INT_SIZE;
 
             var group = new GroupSnapshot(identity, snapshots, intSize);
             if (allocate)
@@ -248,8 +248,12 @@ namespace JamesFrowen.DeltaSnapshot
 
         public void SetHeader()
         {
+            if (Identity.NetId == 0)
+                throw new InvalidOperationException($"NetId zero for {Identity.name}");
+
             var hPtr = (Header*)Ptr;
             hPtr->NetId = Identity.NetId;
+
             //Debug.Assert(Identity.IsPrefab);
             //hPtr->PrefabHash = Identity.PrefabHash;
         }
