@@ -7,6 +7,7 @@
  * permission of James Frowen
  *******************************************************/
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Mirage.Serialization;
 
@@ -23,11 +24,15 @@ namespace JamesFrowen.CSP
 
         public bool Value
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _value == 1;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _value = (byte)(value ? 1 : 0);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator bool(NetworkBool value) => value.Value;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator NetworkBool(bool value) => new NetworkBool() { Value = value };
 
         public T? GetNullable<T>(ref T field) where T : struct
