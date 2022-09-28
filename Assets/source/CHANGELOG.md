@@ -1,3 +1,16 @@
+# [1.0.0-beta.8](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.7...v1.0.0-beta.8) (2022-09-28)
+
+
+### Features
+
+* adding access to state pointer ([8952eb0](https://github.com/James-Frowen/ClientSidePrediction/commit/8952eb03b67521a043b517104711595b784a454d))
+* adding struct that makes it easier to pack bools into single byte ([23d565b](https://github.com/James-Frowen/ClientSidePrediction/commit/23d565bd284e81308905633406c923747197ba24))
+
+
+### Performance Improvements
+
+* adding AggressiveInlining for NetworkBool ([1347f35](https://github.com/James-Frowen/ClientSidePrediction/commit/1347f35e8ca7da7cda1146f923c23af8979d7baf))
+
 # [1.0.0-beta.7](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.6...v1.0.0-beta.7) (2022-09-22)
 
 
