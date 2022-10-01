@@ -71,7 +71,8 @@ namespace JamesFrowen.CSP
         private readonly List<INetworkPlayer> _players;
         private readonly Dictionary<INetworkPlayer, PlayerTimeTracker> _playerTracker = new Dictionary<INetworkPlayer, PlayerTimeTracker>();
         private readonly NetworkWorld _world;
-        private readonly IPredictionTime _time;
+        private readonly TickRunner _tickRunner;
+        private readonly PredictionTime _time;
         private readonly IPredictionSimulation _simulation;
         private readonly PredictionCollection _behaviours;
         private bool _hostMode;
@@ -107,6 +108,7 @@ namespace JamesFrowen.CSP
         public ServerManager(
             IPredictionSimulation simulation,
             TickRunner tickRunner,
+            PredictionTime time,
             NetworkWorld world,
             ISnapshotAllocator allocator,
             IMessageReceiver messageReceiver,
@@ -118,7 +120,8 @@ namespace JamesFrowen.CSP
             _groupManager = new SnapshotGroupManager(_allocator);
             _worldSnapshot = new WorldSnapshot(_groupManager, bufferSize);
             _players = new List<INetworkPlayer>();
-            _time = tickRunner;
+            _tickRunner = tickRunner;
+            _time = time;
             _behaviours = new PredictionCollection(_time);
             _simulation = simulation;
             tickRunner.OnTick += Tick;
@@ -194,11 +197,18 @@ namespace JamesFrowen.CSP
         public void Tick(int tick)
         {
             if (verbose.LogEnabled()) verbose.Log($"Server tick {tick}");
+
+            _time.Tick = tick;
+            _time.Method = UpdateMethod.NetworkFixed;
+
             _worldSnapshot.BeforeSimulate(tick);
             Simulate(tick);
             _lastSim = tick;
             SendState(tick);
+
+            _time.Method = UpdateMethod.None;
         }
+
         public void Simulate(int tick)
         {
             foreach (var updates in _behaviours.GetUpdates())
@@ -218,9 +228,6 @@ namespace JamesFrowen.CSP
 
         private void SendState(int tick)
         {
-            // todo get max size from config
-
-
             CopyStateForTick(tick);
 
             for (var i = 0; i < _players.Count; i++)

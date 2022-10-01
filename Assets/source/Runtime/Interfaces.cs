@@ -56,6 +56,29 @@ namespace JamesFrowen.CSP
         /// Is the current fixed update a resimulation? or the first time tick
         /// </summary>
         bool IsResimulation { get; }
+
+        /// <summary>
+        /// What CSP method is current being invoked.
+        /// <para>Can be used to validate where code is running</para>
+        /// </summary>
+        UpdateMethod Method { get; }
+    }
+
+    /// <summary>
+    /// What update method is currently being invoked
+    /// </summary>
+    public enum UpdateMethod
+    {
+        /// <summary>
+        /// None of the CSP methods, could be any other unity update
+        /// </summary>
+        None,
+        /// <summary>
+        /// Includes all methods called as party of simulation and resimulation. (eg BeforeSimulate/AfterTick/etc)
+        /// </summary>
+        NetworkFixed,
+        Input,
+        Visual,
     }
 
     internal interface IClientController

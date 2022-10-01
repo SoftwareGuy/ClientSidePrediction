@@ -157,7 +157,9 @@ namespace JamesFrowen.CSP.Debugging
                     SceneManager.MoveGameObjectToScene(clone2, clientScene2);
                     var behaviour2 = clone2.GetComponent<IDebugPredictionLocalCopy>();
                     clone.GetComponent<IDebugPredictionLocalCopy>().Copy = behaviour2;
-                    behaviour2.Setup(new TickRunner() { TickRate = ClientManager.TickRate });
+                    var tickRunner = new TickRunner() { TickRate = ClientManager.TickRate };
+                    var predictionTime = new PredictionTime(tickRunner);
+                    behaviour2.Setup(predictionTime);
                     clone2.GetComponent<Renderer>().material.color = Color.blue;
 
                     clone2.GetComponent<Renderer>().enabled = true;

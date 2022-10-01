@@ -56,8 +56,10 @@ namespace JamesFrowen.CSP
         private SimpleAlloc _simpleAlloc;
         private bool _clientReady;
         private bool _serverRunning;
+        private PredictionTime _time;
 
         public TickRunner TickRunner => _tickRunner;
+        public IPredictionTime Time => _time;
 
         /// <summary>
         /// Used to set custom Simulation or to set default simulation with different local physics scene
@@ -71,7 +73,6 @@ namespace JamesFrowen.CSP
             _simulation = simulation;
         }
 
-
         private void Start()
         {
             _simpleAlloc = new SimpleAlloc();
@@ -84,6 +85,7 @@ namespace JamesFrowen.CSP
             Client?.Started.AddListener(ClientStarted);
             Client?.Disconnected.AddListener(ClientStopped);
         }
+
         private void OnDestroy()
         {
             // clean up if this object is destroyed
@@ -100,7 +102,8 @@ namespace JamesFrowen.CSP
                 TickRate = TickRate
             };
 
-            serverManager = new ServerManager(_simulation, _tickRunner, Server.World, _simpleAlloc, Server.MessageHandler);
+            serverManager = new ServerManager(_simulation, _tickRunner, _time, Server.World, _simpleAlloc, Server.MessageHandler);
+
 
             // we need to add players because serverManager keeps track of a list internally
             Server.Connected.AddListener(serverManager.AddPlayer);
@@ -163,7 +166,7 @@ namespace JamesFrowen.CSP
                 {
                     TickRate = TickRate,
                 };
-                clientManager = new ClientManager(_simulation, clientRunner, Client.World, Client.Player, Client.MessageHandler, _simpleAlloc);
+                clientManager = new ClientManager(_simulation, clientRunner, _time, Client.World, Client.Player, Client.MessageHandler, _simpleAlloc);
                 _tickRunner = clientRunner;
                 _tickRunner.BeforeAllTicks += () => InputUpdate(clientManager.Behaviours.GetUpdates());
                 _tickRunner.AfterAllTicks += () => VisualUpdate(clientManager.Behaviours.GetUpdates());
@@ -221,24 +224,28 @@ namespace JamesFrowen.CSP
         {
             if (logger.LogEnabled()) logger.Log($"SetServerRunning: {running}");
 
-            // store bool incase serverNanager isn't created yet
+            // store bool incase serverManager isn't created yet
             _serverRunning = running;
             _tickRunner.SetRunning(running);
         }
 
-        internal static void InputUpdate(IEnumerable<IPredictionUpdates> behaviours)
+        internal void InputUpdate(IEnumerable<IPredictionUpdates> behaviours)
         {
+            _time.Method = UpdateMethod.Input;
             foreach (var behaviour in behaviours)
             {
                 behaviour.InputUpdate();
             }
+            _time.Method = UpdateMethod.None;
         }
-        internal static void VisualUpdate(IEnumerable<IPredictionUpdates> behaviours)
+        internal void VisualUpdate(IEnumerable<IPredictionUpdates> behaviours)
         {
+            _time.Method = UpdateMethod.Visual;
             foreach (var behaviour in behaviours)
             {
                 behaviour.VisualUpdate();
             }
+            _time.Method = UpdateMethod.None;
         }
 
         private void Update()

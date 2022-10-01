@@ -19,23 +19,6 @@ using UnityEngine.Assertions;
 
 namespace JamesFrowen.CSP
 {
-    internal class ClientTime : IPredictionTime
-    {
-        private readonly IPredictionTime _tickRunner;
-
-        public ClientTime(IPredictionTime tickRunner)
-        {
-            _tickRunner = tickRunner;
-        }
-
-        public float FixedDeltaTime => _tickRunner.FixedDeltaTime;
-        public double UnscaledTime => _tickRunner.UnscaledTime;
-        public float FixedTime => Tick * FixedDeltaTime;
-
-        public int Tick { get; set; }
-        public bool IsResimulation { get; set; }
-    }
-
     /// <summary>
     /// Controls all objects on client
     /// </summary>
@@ -45,7 +28,7 @@ namespace JamesFrowen.CSP
         private static readonly ILogger verbose = LogFactory.GetLogger("JamesFrowen.CSP.ClientManager_Verbose", LogType.Exception);
         private static StringBuilder _debugBuilder = new StringBuilder();
 
-        private readonly IPredictionTime _time;
+        private readonly TickRunner _tickRunner;
         private readonly IPredictionSimulation _simulation;
         private readonly PredictionCollection _behaviours;
         private readonly INetworkPlayer _clientPlayer;
@@ -56,7 +39,7 @@ namespace JamesFrowen.CSP
         private readonly SnapshotGroupManager _groupManager;
 
         /// <summary>Time used for physics, includes resimulation time. Driven by <see cref="_time"/></summary>
-        private readonly ClientTime clientTime;
+        private readonly PredictionTime _time;
         private readonly NetworkWorld world;
         private int? lastReceivedTick;
         private bool unappliedTick;
@@ -89,6 +72,7 @@ namespace JamesFrowen.CSP
         public ClientManager(
             IPredictionSimulation simulation,
             ClientTickRunner clientTickRunner,
+            PredictionTime time,
             NetworkWorld world,
             INetworkPlayer clientPlayer,
             MessageHandler messageHandler,
@@ -100,14 +84,14 @@ namespace JamesFrowen.CSP
             _allocator = allocator;
             _groupManager = new SnapshotGroupManager(_allocator);
             _worldSnapshot = new WorldSnapshot(_groupManager, bufferSize);
-            _time = clientTickRunner;
+            _tickRunner = clientTickRunner;
+            _time = time;
             _behaviours = new PredictionCollection(_time);
             _simulation = simulation;
             _clientPlayer = clientPlayer;
             this.clientTickRunner = clientTickRunner;
             this.clientTickRunner.OnTick += Tick;
             this.clientTickRunner.OnTickSkip += OnTickSkip;
-            clientTime = new ClientTime(_time);
 
             messageHandler.RegisterHandler<DeltaWorldState>(ReceiveDeltaWorldState);
             this.world = world;
@@ -329,12 +313,12 @@ namespace JamesFrowen.CSP
             }
 
             // step forward Applying inputs
-            clientTime.IsResimulation = true;
+            _time.IsResimulation = true;
             for (var tick = from; tick <= to; tick++)
             {
                 Simulate(tick);
             }
-            clientTime.IsResimulation = false;
+            _time.IsResimulation = false;
 
             foreach (var behaviour in _behaviours.GetBehaviours())
                 behaviour.ClientController.AfterResimulate();
@@ -342,9 +326,9 @@ namespace JamesFrowen.CSP
 
         private void Simulate(int tick)
         {
-            _worldSnapshot.BeforeSimulate(tick);
+            _time.Tick = tick;
 
-            clientTime.Tick = tick;
+            _worldSnapshot.BeforeSimulate(tick);
 
             foreach (var updates in _behaviours.GetUpdates())
             {
@@ -361,10 +345,13 @@ namespace JamesFrowen.CSP
             {
                 behaviour.AfterTick();
             }
+
         }
 
         internal void Tick(int tick)
         {
+            _time.Method = UpdateMethod.NetworkFixed;
+
             // set lastSim to +1, so if we receive new snapshot, then we sim up to 106 again
             // we only want to step forward 1 tick at a time so we collect inputs, and sim correctly
             // todo: what happens if we do 2 at once, is that really a problem?
@@ -378,6 +365,7 @@ namespace JamesFrowen.CSP
                 unappliedTick = false;
             }
 
+            _time.Tick = tick;
             foreach (var behaviour in _behaviours.GetBehaviours())
             {
                 // get and send inputs
@@ -387,6 +375,7 @@ namespace JamesFrowen.CSP
 
             SendInputs(tick);
             Simulate(tick);
+            _time.Method = UpdateMethod.None;
         }
 
         private void SendInputs(int tick)

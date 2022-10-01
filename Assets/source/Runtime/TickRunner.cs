@@ -10,7 +10,25 @@ namespace JamesFrowen.CSP
 {
     public delegate void OnTick(int tick);
 
-    public class TickRunner : IPredictionTime
+
+    public class PredictionTime : IPredictionTime
+    {
+        private readonly TickRunner _runner;
+
+        public PredictionTime(TickRunner runner)
+        {
+            _runner = runner;
+        }
+
+        public float FixedDeltaTime => _runner.FixedDeltaTime;
+        public double UnscaledTime => _runner.UnscaledTime;
+        public float FixedTime => Tick * FixedDeltaTime;
+
+        public int Tick { get; set; }
+        public bool IsResimulation { get; set; } = false;
+        public UpdateMethod Method { get; set; } = UpdateMethod.None;
+    }
+    public class TickRunner
     {
         private static readonly ILogger logger = LogFactory.GetLogger<TickRunner>();
 
@@ -103,9 +121,6 @@ namespace JamesFrowen.CSP
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => stopwatch.Elapsed.TotalSeconds;
         }
-
-        bool IPredictionTime.IsResimulation => false;
-        float IPredictionTime.FixedTime => Tick * FixedDeltaTime;
 
         public void SetRunning(bool running)
         {
