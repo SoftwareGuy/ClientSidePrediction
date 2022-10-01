@@ -81,6 +81,18 @@ namespace JamesFrowen.CSP
             _sortedUpdates.AddRange(updates);
             _sortedBehaviours.AddRange(behaviours);
         }
+
+        public void Add(IEnumerable<IPredictionUpdates> updates)
+        {
+            _needsSorting = true;
+
+            foreach (var update in updates)
+            {
+                update.PredictionTime = _time;
+            }
+            _sortedUpdates.AddRange(updates);
+        }
+
         public void Remove(NetworkIdentity identity,
             out IReadOnlyList<IPredictionUpdates> removedUpdates,
             out IReadOnlyList<IPredictionBehaviour> removedBehaviours)
@@ -97,10 +109,24 @@ namespace JamesFrowen.CSP
             _needsSorting = true;
 
             foreach (var obj in updates)
+            {
+                obj.PredictionTime = null;
                 _sortedUpdates.Remove(obj);
+            }
 
             foreach (var obj in behaviours)
                 _sortedBehaviours.Remove(obj);
+        }
+
+        public void Remove(IEnumerable<IPredictionUpdates> updates)
+        {
+            _needsSorting = true;
+
+            foreach (var obj in updates)
+            {
+                obj.PredictionTime = null;
+                _sortedUpdates.Remove(obj);
+            }
         }
 
         /// <summary>
