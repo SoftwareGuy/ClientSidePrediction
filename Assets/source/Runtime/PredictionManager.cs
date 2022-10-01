@@ -104,6 +104,7 @@ namespace JamesFrowen.CSP
 
             serverManager = new ServerManager(_simulation, _tickRunner, _time, Server.World, _simpleAlloc, Server.MessageHandler);
 
+            serverManager.Behaviours.Add(UniTaskExtras.CustomTimingHelper.Init());
 
             // we need to add players because serverManager keeps track of a list internally
             Server.Connected.AddListener(serverManager.AddPlayer);
@@ -170,6 +171,8 @@ namespace JamesFrowen.CSP
                 _tickRunner = clientRunner;
                 _tickRunner.BeforeAllTicks += () => InputUpdate(clientManager.Behaviours.GetUpdates());
                 _tickRunner.AfterAllTicks += () => VisualUpdate(clientManager.Behaviours.GetUpdates());
+
+                clientManager.Behaviours.Add(UniTaskExtras.CustomTimingHelper.Init());
             }
 
             SetClientReady(_clientReady);
