@@ -1,3 +1,12 @@
+# [1.0.0-beta.9](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.8...v1.0.0-beta.9) (2022-10-01)
+
+
+### Features
+
+* adding custom UniTask awaits ([9aa9c50](https://github.com/James-Frowen/ClientSidePrediction/commit/9aa9c50fbce270d7eba69a3aa47bf1f97a8321c7))
+* adding Method to prediction time ([843cd26](https://github.com/James-Frowen/ClientSidePrediction/commit/843cd262745b8436c5b9a9d4a5c63bf49d9f3686))
+* adding option to add IPredictionUpdates to collection ([7b2d948](https://github.com/James-Frowen/ClientSidePrediction/commit/7b2d948d745e0c0654e692f0628c3276e7555197))
+
 # [1.0.0-beta.8](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.7...v1.0.0-beta.8) (2022-09-28)
 
 
