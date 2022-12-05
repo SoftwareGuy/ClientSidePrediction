@@ -1,3 +1,17 @@
+# [1.0.0-beta.10](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.9...v1.0.0-beta.10) (2022-12-05)
+
+
+### Bug Fixes
+
+* adding 2nd queue for unitask so that new tasks arn't run in current tick ([ec61388](https://github.com/James-Frowen/ClientSidePrediction/commit/ec6138888afc43e80e43c1de59f7fba50b68516b))
+* fixing errors for prediction time ([efdfffb](https://github.com/James-Frowen/ClientSidePrediction/commit/efdfffb161f41e165532f82fde5e05820f6665d2))
+* fixing errors in world dump ([5b0cf7e](https://github.com/James-Frowen/ClientSidePrediction/commit/5b0cf7eacdbbaaa3f3efdd4f0734150ceccad7c2))
+
+
+### Features
+
+* adding method to get state from another tick ([2e00e81](https://github.com/James-Frowen/ClientSidePrediction/commit/2e00e812cff67c139723171dc4e204e396b0b382))
+
 # [1.0.0-beta.9](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.8...v1.0.0-beta.9) (2022-10-01)
 
 
