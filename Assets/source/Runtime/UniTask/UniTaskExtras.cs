@@ -116,7 +116,10 @@ namespace JamesFrowen.CSP.UniTaskExtras
     internal class CustomTimingQueue
     {
         private readonly CustomTiming _timing;
-        private readonly Queue<Action> _actionQueue = new Queue<Action>();
+        // need 2 queues so that item, enqueued while in this fixed update are not invoked till next update (otherwise we might have infinite loop)
+        private int _queueIndex;
+        private readonly Queue<Action>[] _actionQueue = new Queue<Action>[] { new Queue<Action>(), new Queue<Action>() };
+
 
 #if DEBUG
         private readonly Thread _mainThread;
@@ -136,7 +139,7 @@ namespace JamesFrowen.CSP.UniTaskExtras
             if (Thread.CurrentThread != _mainThread)
                 Debug.LogError($"CustomTimingQueue is not thread safe, only call on main thread");
 #endif
-            _actionQueue.Enqueue(continuation);
+            _actionQueue[_queueIndex].Enqueue(continuation);
         }
 
         // delegate entrypoint.
@@ -169,9 +172,12 @@ namespace JamesFrowen.CSP.UniTaskExtras
                 Debug.LogError($"CustomTimingQueue is not thread safe, only call on main thread");
 #endif
 
-            while (_actionQueue.Count > 0)
+            // todo can we just use queue count instead of 2 queues?
+            var queue = _actionQueue[_queueIndex];
+            _queueIndex++;
+            while (queue.Count > 0)
             {
-                var action = _actionQueue.Dequeue();
+                var action = queue.Dequeue();
                 try
                 {
                     action.Invoke();
