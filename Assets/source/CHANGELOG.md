@@ -1,3 +1,10 @@
+# [1.0.0-beta.11](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.10...v1.0.0-beta.11) (2022-12-05)
+
+
+### Bug Fixes
+
+* fixing error in unitask queue ([cc0132f](https://github.com/James-Frowen/ClientSidePrediction/commit/cc0132f83a4fb56dcbc79d71d5127f32d8b30e73))
+
 # [1.0.0-beta.10](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.9...v1.0.0-beta.10) (2022-12-05)
 
 
