@@ -34,10 +34,10 @@ namespace JamesFrowen.DeltaSnapshot
     public unsafe class DeltaSnapshotWriter
     {
         private readonly IDeltaSnapshot _deltaSnapshot;
-        private readonly ISnapshotAllocator _allocator;
+        private readonly IAllocator _allocator;
         private WorldStateCopy _zero;
 
-        public DeltaSnapshotWriter(ISnapshotAllocator allocator, IDeltaSnapshot deltaSnapshot = null)
+        public DeltaSnapshotWriter(IAllocator allocator, IDeltaSnapshot deltaSnapshot = null)
         {
             _allocator = allocator ?? throw new ArgumentNullException(nameof(allocator));
             _deltaSnapshot = deltaSnapshot ?? new DeltaSnapshot_ValueZeroCounts();

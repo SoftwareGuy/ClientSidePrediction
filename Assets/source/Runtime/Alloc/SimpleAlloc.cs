@@ -20,7 +20,7 @@ namespace JamesFrowen.CSP.Alloc
         [DllImport("kernel32.dll")]
         public static extern void RtlZeroMemory(IntPtr dst, UIntPtr length);
     }
-    public sealed unsafe class SimpleAlloc : ISnapshotAllocator, IDisposable
+    public sealed unsafe class SimpleAlloc : IAllocator, IDisposable
     {
         private const string TAG = "[SimpleAlloc]";
         private static readonly ILogger logger = LogFactory.GetLogger<SimpleAlloc>();

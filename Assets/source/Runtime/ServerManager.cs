@@ -77,9 +77,8 @@ namespace JamesFrowen.CSP
         private readonly PredictionCollection _behaviours;
         private bool _hostMode;
         private readonly int _bufferSize;
-        private readonly ISnapshotAllocator _allocator;
+        private readonly IAllocator _allocator;
         private readonly WorldSnapshot _worldSnapshot;
-        private readonly SnapshotGroupManager _groupManager;
 
         internal int _lastSim;
 
@@ -110,15 +109,14 @@ namespace JamesFrowen.CSP
             TickRunner tickRunner,
             PredictionTime time,
             NetworkWorld world,
-            ISnapshotAllocator allocator,
+            IAllocator allocator,
             IMessageReceiver messageReceiver,
             int bufferSize = PredictionManager.DEFAULT_BUFFER_SIZE
             )
         {
             _bufferSize = bufferSize;
             _allocator = allocator;
-            _groupManager = new SnapshotGroupManager(_allocator);
-            _worldSnapshot = new WorldSnapshot(_groupManager, bufferSize);
+            _worldSnapshot = new WorldSnapshot(_allocator, bufferSize);
             _players = new List<INetworkPlayer>();
             _tickRunner = tickRunner;
             _time = time;
@@ -174,8 +172,8 @@ namespace JamesFrowen.CSP
 
             // allocate here so that state can be used befor first tick
             // in first tick this state will be copied to the GroupSnapshot for that tick
-            var group = _groupManager.CreateGroup(identity, snapshots.ToArray(), true);
-            _groupManager.AddGroup(group);
+            var group = IdentitySnapshot.Create(identity, snapshots.ToArray(), _allocator);
+            _worldSnapshot.AddGroup(group);
             group.SetAsActivePtr();
 
             foreach (var behaviour in foundBehaviours)
@@ -191,7 +189,7 @@ namespace JamesFrowen.CSP
         private void OnUnspawn(NetworkIdentity identity)
         {
             _behaviours.Remove(identity, out var _, out var _);
-            _groupManager.Remove(identity, false);
+            _worldSnapshot.Remove(identity, false);
         }
 
         public void Tick(int tick)
@@ -321,7 +319,7 @@ namespace JamesFrowen.CSP
 
                     if (payload.Count % 4 != 0)
                     {
-                        var last = (uint)iPtr[(payload.Count / 4)];
+                        var last = (uint)iPtr[payload.Count / 4];
                         var extraBytes = payload.Count % 4;
                         var mask = ~(uint.MaxValue << (extraBytes * 8));
                         var value = last & mask;
@@ -393,7 +391,7 @@ namespace JamesFrowen.CSP
         {
             var tickSnapshot = _worldSnapshot.GetTick(tick);
 
-            var groups = tickSnapshot.Groups;
+            var groups = tickSnapshot.Identities;
             if (groups.Count == 0)
                 return;
 
@@ -430,9 +428,9 @@ namespace JamesFrowen.CSP
             }
         }
 
-        private static unsafe void ValidateCopy(int* writePtr, IReadOnlyList<GroupSnapshot> groups, int index)
+        private static unsafe void ValidateCopy(int* writePtr, IReadOnlyList<IdentitySnapshot> groups, int index)
         {
-            var header = (GroupSnapshot.Header*)writePtr;
+            var header = (IdentitySnapshot.Header*)writePtr;
             if (header->NetId == 0)
             {
                 var previous = index > 0 ? groups[index - 1] : default;
@@ -441,7 +439,7 @@ namespace JamesFrowen.CSP
             }
         }
 
-        private static unsafe void Verbose_LogBehaviourState(int* writePtr, GroupSnapshot group)
+        private static unsafe void Verbose_LogBehaviourState(int* writePtr, IdentitySnapshot group)
         {
             var startPtr = writePtr - group.IntSize;
             verbose.Log($"WriteGroup:{group.IntSize * 4} bytes, netId:{group.Identity.NetId}, Object:{group.Identity.name} Hex:[{*startPtr:X8}]");
@@ -473,7 +471,7 @@ namespace JamesFrowen.CSP
             }
         }
 
-        private unsafe void CheckSize(IReadOnlyList<GroupSnapshot> groups, WorldStateCopy copy)
+        private unsafe void CheckSize(IReadOnlyList<IdentitySnapshot> groups, WorldStateCopy copy)
         {
             var total = 0;
             for (var i = 0; i < groups.Count; i++)

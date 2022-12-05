@@ -34,9 +34,8 @@ namespace JamesFrowen.CSP
         private readonly INetworkPlayer _clientPlayer;
         private readonly ClientTickRunner clientTickRunner;
         private readonly int _bufferSize;
-        private readonly ISnapshotAllocator _allocator;
+        private readonly IAllocator _allocator;
         private readonly WorldSnapshot _worldSnapshot;
-        private readonly SnapshotGroupManager _groupManager;
 
         /// <summary>Time used for physics, includes resimulation time. Driven by <see cref="_time"/></summary>
         private readonly PredictionTime _time;
@@ -76,14 +75,13 @@ namespace JamesFrowen.CSP
             NetworkWorld world,
             INetworkPlayer clientPlayer,
             MessageHandler messageHandler,
-            ISnapshotAllocator allocator,
+            IAllocator allocator,
             int bufferSize = PredictionManager.DEFAULT_BUFFER_SIZE
             )
         {
             _bufferSize = bufferSize;
             _allocator = allocator;
-            _groupManager = new SnapshotGroupManager(_allocator);
-            _worldSnapshot = new WorldSnapshot(_groupManager, bufferSize);
+            _worldSnapshot = new WorldSnapshot(_allocator, bufferSize);
             _tickRunner = clientTickRunner;
             _time = time;
             _behaviours = new PredictionCollection(_time);
@@ -131,8 +129,8 @@ namespace JamesFrowen.CSP
 
             // allocate here so that state can be used befor first tick
             // in first tick this state will be copied to the GroupSnapshot for that tick
-            var group = _groupManager.CreateGroup(identity, snapshots.ToArray(), true);
-            _groupManager.AddGroup(group);
+            var group = IdentitySnapshot.Create(identity, snapshots.ToArray(), _allocator);
+            _worldSnapshot.AddGroup(group);
             group.SetAsActivePtr();
 
             foreach (var behaviour in foundBehaviours)
@@ -146,7 +144,7 @@ namespace JamesFrowen.CSP
         public void OnUnspawn(NetworkIdentity identity)
         {
             _behaviours.Remove(identity, out var _, out var _);
-            _groupManager.Remove(identity, false);
+            _worldSnapshot.Remove(identity, false);
         }
 
         private unsafe void ReceiveDeltaWorldState(INetworkPlayer player, DeltaWorldState msg)
@@ -216,20 +214,20 @@ namespace JamesFrowen.CSP
             while (readPtr < end)
             {
                 // note: dont need to +1 for readPtr here, becuase group.IntSize includes it
-                var header = (GroupSnapshot.Header*)readPtr;
+                var header = (IdentitySnapshot.Header*)readPtr;
 
                 if (header->NetId == 0)
                     throw new Exception($"Read netid as 0 at snapshotPosition {end - readPtr}");
 
                 // object might be new? and not in snapshot
                 // if so, add it to tick
-                if (!tickSnapshot.Lookup.TryGetValue(header->NetId, out var group))
+                if (!tickSnapshot.Lookup.TryGetValue(header->NetId, out var identitySnapshot))
                 {
-                    if (_groupManager.Groups.TryGetValue(header->NetId, out var startingGroup))
+                    if (_worldSnapshot.Spawned.TryGetValue(header->NetId, out var startingGroup))
                     {
-                        var newGroup = _groupManager.CopyGroup(startingGroup, true);
+                        var newGroup = IdentitySnapshot.Clone(startingGroup, _allocator);
                         tickSnapshot.Add(newGroup);
-                        group = newGroup;
+                        identitySnapshot = newGroup;
                     }
                     else
                     {
@@ -239,16 +237,16 @@ namespace JamesFrowen.CSP
                 }
 
                 // we dont need to 
-                UnsafeHelper.Copy(readPtr, group.Ptr, group.IntSize);
+                UnsafeHelper.Copy(readPtr, identitySnapshot.Ptr, identitySnapshot.IntSize);
 
-                readPtr += group.IntSize;
+                readPtr += identitySnapshot.IntSize;
 
                 if (verbose.LogEnabled())
-                    Verbose_LogBehaviourState(readPtr, group);
+                    Verbose_LogBehaviourState(readPtr, identitySnapshot);
             }
         }
 
-        private static unsafe void Verbose_LogBehaviourState(int* writePtr, GroupSnapshot group)
+        private static unsafe void Verbose_LogBehaviourState(int* writePtr, IdentitySnapshot group)
         {
             var startPtr = writePtr - group.IntSize;
             verbose.Log($"ReadGroup:{group.IntSize * 4} bytes, netId:{group.Identity.NetId}, Object:{group.Identity.name} Hex:[{*startPtr:X8}]");

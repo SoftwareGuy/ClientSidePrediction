@@ -26,7 +26,7 @@ namespace JamesFrowen.DeltaSnapshot
         /// </summary>
         public int IntSize;
 
-        internal unsafe void CheckSize(ISnapshotAllocator allocator, int intCount)
+        internal unsafe void CheckSize(IAllocator allocator, int intCount)
         {
             if (IntSize == intCount)
                 return;

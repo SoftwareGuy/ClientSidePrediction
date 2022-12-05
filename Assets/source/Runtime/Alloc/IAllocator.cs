@@ -11,7 +11,7 @@ using System;
 
 namespace JamesFrowen.CSP.Alloc
 {
-    public unsafe interface ISnapshotAllocator : IDisposable
+    public unsafe interface IAllocator : IDisposable
     {
         void Allocate(IHasAllocatedPointer owner, int byteCount);
         void Release(IHasAllocatedPointer owner);
