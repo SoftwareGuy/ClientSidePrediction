@@ -115,10 +115,12 @@ namespace JamesFrowen.CSP.UniTaskExtras
 
     internal class CustomTimingQueue
     {
+        private const int QUEUE_COUNT = 2;
+
         private readonly CustomTiming _timing;
         // need 2 queues so that item, enqueued while in this fixed update are not invoked till next update (otherwise we might have infinite loop)
         private int _queueIndex;
-        private readonly Queue<Action>[] _actionQueue = new Queue<Action>[] { new Queue<Action>(), new Queue<Action>() };
+        private readonly Queue<Action>[] _actionQueue = new Queue<Action>[QUEUE_COUNT] { new Queue<Action>(), new Queue<Action>() };
 
 
 #if DEBUG
@@ -174,7 +176,8 @@ namespace JamesFrowen.CSP.UniTaskExtras
 
             // todo can we just use queue count instead of 2 queues?
             var queue = _actionQueue[_queueIndex];
-            _queueIndex++;
+            _queueIndex = (_queueIndex + 1) % QUEUE_COUNT;
+
             while (queue.Count > 0)
             {
                 var action = queue.Dequeue();
