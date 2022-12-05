@@ -25,6 +25,16 @@ namespace JamesFrowen.DeltaSnapshot
         /// Offset of pointer from main allocation
         /// </summary>
         int PtrIntOffset { get; set; }
+
+        /// <summary>
+        /// Manager that can be used to get state from a different tick
+        /// </summary>
+        ISnapshotManager SnapshotManager { get; set; }
+    }
+
+    public unsafe interface ISnapshotManager
+    {
+        void* GetStateAtTick(ISnapshotBehaviour snapshotBehaviour, int tick);
     }
 
     public abstract unsafe class SnapshotBehaviour<TState> : NetworkBehaviour, ISnapshotBehaviour where TState : unmanaged
@@ -47,6 +57,13 @@ namespace JamesFrowen.DeltaSnapshot
             }
         }
 
+        protected TState* GetStateAtTick(int tick)
+        {
+            var manager = ((ISnapshotBehaviour)this).SnapshotManager;
+            var ptr = manager.GetStateAtTick(this, tick);
+            return (TState*)ptr;
+        }
+
         private void ThrowNullState()
         {
             throw new SnapshotException($"state pointer is null for '{GetType().Name}' on [netid={Identity.NetId} name='{name}']");
@@ -60,6 +77,7 @@ namespace JamesFrowen.DeltaSnapshot
         }
 
         int ISnapshotBehaviour.PtrIntOffset { get; set; }
+        ISnapshotManager ISnapshotBehaviour.SnapshotManager { get; set; }
 
         // round up to nearest 32 bit;
         public int AllocationSizeInts => (sizeof(TState) + 3) / 4;

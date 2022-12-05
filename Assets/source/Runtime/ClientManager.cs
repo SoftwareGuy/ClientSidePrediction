@@ -129,7 +129,7 @@ namespace JamesFrowen.CSP
 
             // allocate here so that state can be used befor first tick
             // in first tick this state will be copied to the GroupSnapshot for that tick
-            var group = IdentitySnapshot.Create(identity, snapshots.ToArray(), _allocator);
+            var group = IdentitySnapshot.Create(_worldSnapshot, identity, snapshots.ToArray(), _allocator);
             _worldSnapshot.AddGroup(group);
             group.SetAsActivePtr();
 

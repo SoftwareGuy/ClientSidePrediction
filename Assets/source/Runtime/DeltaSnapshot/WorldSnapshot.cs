@@ -17,7 +17,7 @@ using UnityEngine;
 
 namespace JamesFrowen.DeltaSnapshot
 {
-    public class WorldSnapshot
+    public class WorldSnapshot : ISnapshotManager
     {
         private readonly RingBuffer<TickSnapshot> _snapshots;
         private readonly IAllocator _allocator;
@@ -126,6 +126,14 @@ namespace JamesFrowen.DeltaSnapshot
             Debug.Assert(size == previousGroup.IntSize);
             UnsafeHelper.Copy(previousGroup.Ptr, nextGroup.Ptr, size);
         }
+
+        public unsafe void* GetStateAtTick(ISnapshotBehaviour behaviour, int tick)
+        {
+            var snapshot = _snapshots[tick];
+            var group = snapshot.Lookup[behaviour.NetId];
+            var ptr = (int*)group.Ptr + behaviour.PtrIntOffset;
+            return ptr;
+        }
     }
 
     /// <summary>
@@ -197,7 +205,7 @@ namespace JamesFrowen.DeltaSnapshot
         /// <param name="behaviours"></param>
         /// <param name="allocator">Leaeve as null to now allocate right away. Call <see cref="Allocate(IAllocator)"/> to allocate later</param>
         /// <returns></returns>
-        public static IdentitySnapshot Create(NetworkIdentity identity, ISnapshotBehaviour[] behaviours, IAllocator allocator = null)
+        public static IdentitySnapshot Create(ISnapshotManager manager, NetworkIdentity identity, ISnapshotBehaviour[] behaviours, IAllocator allocator = null)
         {
             // +1 for netid
             var intSize = IdentitySnapshot.Header.INT_SIZE;
@@ -205,6 +213,7 @@ namespace JamesFrowen.DeltaSnapshot
             {
                 // set offset of this behaviour to be the size of all previous
                 behaviour.PtrIntOffset = intSize;
+                behaviour.SnapshotManager = manager;
 
                 intSize += behaviour.AllocationSizeInts;
             }
