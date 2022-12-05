@@ -17,7 +17,7 @@ namespace JamesFrowen.CSP
 
         public PredictionTime(TickRunner runner)
         {
-            _runner = runner;
+            _runner = runner ?? throw new ArgumentNullException();
         }
 
         public float FixedDeltaTime => _runner.FixedDeltaTime;

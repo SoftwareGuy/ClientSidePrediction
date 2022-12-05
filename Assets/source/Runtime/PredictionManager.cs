@@ -101,6 +101,7 @@ namespace JamesFrowen.CSP
             {
                 TickRate = TickRate
             };
+            _time = new PredictionTime(_tickRunner);
 
             serverManager = new ServerManager(_simulation, _tickRunner, _time, Server.World, _simpleAlloc, Server.MessageHandler);
 
@@ -167,8 +168,9 @@ namespace JamesFrowen.CSP
                 {
                     TickRate = TickRate,
                 };
-                clientManager = new ClientManager(_simulation, clientRunner, _time, Client.World, Client.Player, Client.MessageHandler, _simpleAlloc);
                 _tickRunner = clientRunner;
+                _time = new PredictionTime(_tickRunner);
+                clientManager = new ClientManager(_simulation, clientRunner, _time, Client.World, Client.Player, Client.MessageHandler, _simpleAlloc);
                 _tickRunner.BeforeAllTicks += () => InputUpdate(clientManager.Behaviours.GetUpdates());
                 _tickRunner.AfterAllTicks += () => VisualUpdate(clientManager.Behaviours.GetUpdates());
 
@@ -234,9 +236,13 @@ namespace JamesFrowen.CSP
 
         internal void InputUpdate(IEnumerable<IPredictionUpdates> behaviours)
         {
+            //Debug.Assert(behaviours != null, "Collection null");
+
             _time.Method = UpdateMethod.Input;
             foreach (var behaviour in behaviours)
             {
+                //Debug.Assert(behaviour != null, "Behaviour null");
+
                 behaviour.InputUpdate();
             }
             _time.Method = UpdateMethod.None;
