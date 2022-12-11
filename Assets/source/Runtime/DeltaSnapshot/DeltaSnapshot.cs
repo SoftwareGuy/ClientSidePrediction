@@ -334,7 +334,7 @@ namespace JamesFrowen.DeltaSnapshot
 
             var readValue = stackalloc bool[intSize];
             var zeroCount = reader.ReadPackedUInt32();
-            logger.Log($"Zero Count : {zeroCount} (first)");
+            if (logger.LogEnabled()) logger.Log($"Zero Count : {zeroCount} (first)");
 
             var countingZeros = true;
             for (var i = 0; i < intSize; i++)
