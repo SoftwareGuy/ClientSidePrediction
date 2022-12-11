@@ -1,10 +1,13 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.CompilerServices;
 using Mirage.Logging;
 using UnityEngine;
 using UnityEngine.Assertions;
+
+#if CLIENT_TICK_RUNNER_VERBOSE
+using System.IO;
+#endif
 
 namespace JamesFrowen.CSP
 {
@@ -23,6 +26,8 @@ namespace JamesFrowen.CSP
         public float FixedDeltaTime => _runner.FixedDeltaTime;
         public double UnscaledTime => _runner.UnscaledTime;
         public float FixedTime => Tick * FixedDeltaTime;
+        public double Time => _runner.Time;
+        public double DeltaTime => _runner.DeltaTime;
 
         public int Tick { get; set; }
         public bool IsResimulation { get; set; } = false;
@@ -58,6 +63,8 @@ namespace JamesFrowen.CSP
         public int MaxTickPerFrame = 5;
 
         protected int _tick;
+        protected double _time;
+        protected double _deltaTime;
 
         /// <summary>
         /// Used by client to keep up with server
@@ -95,13 +102,19 @@ namespace JamesFrowen.CSP
         public event OnTick AfterTick;
 
         /// <summary>
-        /// Late tick update event, Called after <see cref="Tick"/>
+        /// Called every frame, after all ticks (even if there were no ticks run this frame)
         /// </summary>
         public event Action AfterAllTicks;
 
         public TickRunner()
         {
             stopwatch = Stopwatch.StartNew();
+        }
+
+        public bool IsRunning
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _isRunning;
         }
 
         public float FixedDeltaTime
@@ -115,6 +128,18 @@ namespace JamesFrowen.CSP
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _tick;
         }
+
+        public double Time
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _time;
+        }
+        public double DeltaTime
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _deltaTime;
+        }
+
 
         public double UnscaledTime
         {
@@ -147,7 +172,12 @@ namespace JamesFrowen.CSP
 
             BeforeAllTicks?.Invoke();
 
-            tickTimer += delta * Time.timeScale * TimeScaleMultiple;
+
+            var timeDelta = delta * UnityEngine.Time.timeScale * TimeScaleMultiple;
+
+            _time += timeDelta;
+            _deltaTime = timeDelta;
+            tickTimer += timeDelta;
             while (tickTimer > FixedDeltaTime)
             {
                 tickTimer -= FixedDeltaTime;
@@ -223,7 +253,9 @@ namespace JamesFrowen.CSP
 #if DEBUG
         public float Debug_DelayInTicks { get; private set; }
         public SimpleMovingAverage Debug_RTT => _RTTAverage;
+#endif
 
+#if CLIENT_TICK_RUNNER_VERBOSE
         private StreamWriter _writer;
 #endif
 
@@ -254,7 +286,7 @@ namespace JamesFrowen.CSP
 
             _RTTAverage = new SimpleMovingAverage(movingAverageCount);
 
-#if DEBUG
+#if CLIENT_TICK_RUNNER_VERBOSE
             try
             {
                 _writer = new StreamWriter(Path.Combine(Application.persistentDataPath, "ClientTickRunner.csv")) { AutoFlush = true };
@@ -303,7 +335,7 @@ namespace JamesFrowen.CSP
                 return;
 
             AddTimeToAverage(clientSendTime);
-#if DEBUG
+#if CLIENT_TICK_RUNNER_VERBOSE
             VerboseLog(serverTick, clientSendTime);
 #endif
 
@@ -312,8 +344,6 @@ namespace JamesFrowen.CSP
             // todo check this is correct
             if (!intialized)
             {
-#if DEBUG
-#endif
                 InitNew(serverTick);
                 return;
             }
@@ -392,6 +422,7 @@ namespace JamesFrowen.CSP
         private void InitNew(int serverTick)
         {
             _tick = Mathf.CeilToInt(serverTick + DelayInTicks());
+            // todo do we need to also set _time here?
             TimeScaleMultiple = normalScale;
             intialized = true;
             // todo do we need to invoke this at start as well as skip?
@@ -418,7 +449,7 @@ namespace JamesFrowen.CSP
         }
 
 
-#if DEBUG
+#if CLIENT_TICK_RUNNER_VERBOSE
         private void VerboseLog(int serverTick, double clientSendTime)
         {
             (var lag, var jitter) = _RTTAverage.GetAverageAndStandardDeviation();
