@@ -30,11 +30,19 @@ namespace JamesFrowen.CSP
             Values.Add(value);
         }
 
-        public string Flush()
+        public void Clear() => Values.Clear();
+
+        /// <summary>
+        /// Calculates metrics then clears values
+        /// </summary>
+        /// <param name="avg"></param>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        public void Flush(out float avg, out int min, out int max)
         {
             var sum = 0;
-            var min = int.MaxValue;
-            var max = int.MinValue;
+            min = int.MaxValue;
+            max = int.MinValue;
             var count = Values.Count;
             for (var i = 0; i < count; i++)
             {
@@ -46,12 +54,9 @@ namespace JamesFrowen.CSP
 
                 sum += value;
             }
-            var avg = (float)sum / count;
+            avg = (float)sum / count;
 
             Values.Clear();
-
-            var str = $"avg:{avg:0.0} min:{min} max:{max}";
-            return str;
         }
     }
 
@@ -172,9 +177,8 @@ namespace JamesFrowen.CSP
 
             // allocate here so that state can be used befor first tick
             // in first tick this state will be copied to the GroupSnapshot for that tick
-            var group = IdentitySnapshot.Create(_worldSnapshot, identity, snapshots.ToArray(), _allocator);
-            _worldSnapshot.AddGroup(group);
-            group.SetAsActivePtr();
+            var snap = _worldSnapshot.CreateAndAdd(identity, snapshots.ToArray(), _allocator);
+            snap.SetActivePtr(_time.Tick);
 
             foreach (var behaviour in foundBehaviours)
             {
@@ -199,7 +203,7 @@ namespace JamesFrowen.CSP
             _time.Tick = tick;
             _time.Method = UpdateMethod.NetworkFixed;
 
-            _worldSnapshot.BeforeSimulate(tick);
+            _worldSnapshot.CopyFromPreviousTick(tick);
             Simulate(tick);
             _lastSim = tick;
             SendState(tick);
@@ -209,19 +213,24 @@ namespace JamesFrowen.CSP
 
         public void Simulate(int tick)
         {
-            foreach (var updates in _behaviours.GetUpdates())
+            var updates = _behaviours.GetUpdates();
+            var updateCount = updates.Count;
+            for (var i = 0; i < updateCount; i++)
             {
+                var update = updates[i];
                 // if behaviour run full tick stuff, otherwise just call fixedupdate
-                if (updates is IPredictionBehaviour behaviour)
+                if (update is IPredictionBehaviour behaviour)
                     behaviour.ServerController.Tick(tick);
                 else
-                    updates.NetworkFixedUpdate();
+                    update.NetworkFixedUpdate();
             }
+
             _simulation.Simulate(_time.FixedDeltaTime);
-            foreach (var behaviour in _behaviours.GetBehaviours())
-            {
-                behaviour.AfterTick();
-            }
+
+            var behaviours = _behaviours.GetBehaviours();
+            var behaviourCount = behaviours.Count;
+            for (var i = 0; i < behaviourCount; i++)
+                behaviours[i].AfterTick();
         }
 
         private void SendState(int tick)
@@ -299,9 +308,15 @@ namespace JamesFrowen.CSP
             _deltaSizeTracker.AddValue(payload.Count);
             if (_deltaSizeTracker.Values.Count > 60)
             {
-                var str = _deltaSizeTracker.Flush();
-
-                if (logger.LogEnabled()) logger.Log($"Delta Write: Original Size:{intSize * 4} Delta:[{str}]");
+                if (logger.LogEnabled())
+                {
+                    _deltaSizeTracker.Flush(out var avg, out var min, out var max);
+                    logger.Log($"Delta Write: Original Size:{intSize * 4} Delta:[avg:{avg:0.0} min:{min} max:{max}]");
+                }
+                else
+                {
+                    _deltaSizeTracker.Clear();
+                }
             }
 
             if (verbose.LogEnabled())
@@ -389,29 +404,29 @@ namespace JamesFrowen.CSP
 
         private unsafe void CopyStateForTick(int tick)
         {
-            var tickSnapshot = _worldSnapshot.GetTick(tick);
-
-            var groups = tickSnapshot.Identities;
-            if (groups.Count == 0)
+            var snapshots = _worldSnapshot.Snapshots;
+            var count = snapshots.Count;
+            if (count == 0)
                 return;
 
             var copy = _worldStateCopy.Get(tick);
-            CheckSize(groups, copy);
+            CheckSize(snapshots, copy);
 
             var writePtr = copy.Ptr;
-            for (var i = 0; i < groups.Count; i++)
+            for (var i = 0; i < count; i++)
             {
-                var group = groups[i];
-                UnsafeHelper.Copy(group.Ptr, writePtr, group.IntSize);
+                var snapshot = snapshots[i];
+                var ptr = snapshot.GetStateAtTick(tick);
+                var size = snapshot.IntSizePerTick;
+                UnsafeHelper.Copy(ptr, writePtr, size);
 
-                ValidateCopy(writePtr, groups, i);
+                ValidateCopy(writePtr, snapshots, i);
 
-                writePtr += group.IntSize;
-
+                writePtr += size;
 
                 if (verbose.LogEnabled())
                 {
-                    Verbose_LogBehaviourState(writePtr, group);
+                    Verbose_LogBehaviourState(writePtr, snapshot);
                 }
             }
 
@@ -428,31 +443,32 @@ namespace JamesFrowen.CSP
             }
         }
 
-        private static unsafe void ValidateCopy(int* writePtr, IReadOnlyList<IdentitySnapshot> groups, int index)
+        private static unsafe void ValidateCopy(int* writePtr, IReadOnlyList<IdentitySnapshot> snapshots, int index)
         {
             var header = (IdentitySnapshot.Header*)writePtr;
             if (header->NetId == 0)
             {
-                var previous = index > 0 ? groups[index - 1] : default;
+                var previous = index > 0 ? snapshots[index - 1] : default;
+                var current = snapshots[index];
                 var lastBehaviour = previous?.Snapshots.Last();
-                throw new Exception($"Write netid as 0 at snapshotPosition for group:[index={index},name={groups[index].name}] previousGroup:[name={previous?.name}] lastBehaviour in previous:{lastBehaviour?.GetType()}");
+                throw new Exception($"Write netid as 0 at snapshotPosition for group:[index={index},name={current.name}] previousGroup:[name={previous?.name}] lastBehaviour in previous:{lastBehaviour?.GetType()}");
             }
         }
 
-        private static unsafe void Verbose_LogBehaviourState(int* writePtr, IdentitySnapshot group)
+        private static unsafe void Verbose_LogBehaviourState(int* writePtr, IdentitySnapshot snapshot)
         {
-            var startPtr = writePtr - group.IntSize;
-            verbose.Log($"WriteGroup:{group.IntSize * 4} bytes, netId:{group.Identity.NetId}, Object:{group.Identity.name} Hex:[{*startPtr:X8}]");
+            var startPtr = writePtr - snapshot.IntSizePerTick;
+            verbose.Log($"WriteGroup:{snapshot.IntSizePerTick * 4} bytes, netId:{snapshot.Identity.NetId}, Object:{snapshot.Identity.name} Hex:[{*startPtr:X8}]");
             startPtr += 1;
 
-            foreach (var snapshot in group.Snapshots)
+            foreach (var behaviour in snapshot.Snapshots)
             {
-                var netBehaviour = (NetworkBehaviour)snapshot;
+                var netBehaviour = (NetworkBehaviour)behaviour;
                 Debug.Assert(netBehaviour.NetId <= 0xffffff);
                 Debug.Assert(netBehaviour.ComponentIndex <= 0xff);
 
                 _debugBuilder.Clear();
-                for (var j = 0; j < snapshot.AllocationSizeInts; j++)
+                for (var j = 0; j < behaviour.AllocationSizeInts; j++)
                 {
                     if (j != 0)
                         _debugBuilder.Append(" ");
@@ -466,8 +482,8 @@ namespace JamesFrowen.CSP
                         intStr = value.ToString("X8");
                     _debugBuilder.Append(intStr);
                 }
-                verbose.Log($"WriteState:{snapshot.AllocationSizeInts * 4} bytes, Type:{snapshot.GetType()} Hex:[{_debugBuilder}]");
-                startPtr += snapshot.AllocationSizeInts;
+                verbose.Log($"WriteState:{behaviour.AllocationSizeInts * 4} bytes, Type:{behaviour.GetType()} Hex:[{_debugBuilder}]");
+                startPtr += behaviour.AllocationSizeInts;
             }
         }
 
@@ -477,7 +493,7 @@ namespace JamesFrowen.CSP
             for (var i = 0; i < groups.Count; i++)
             {
                 var group = groups[i];
-                total += group.IntSize;
+                total += group.IntSizePerTick;
             }
 
             copy.CheckSize(_allocator, total);

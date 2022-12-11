@@ -14,6 +14,7 @@ using JamesFrowen.DeltaSnapshot;
 using Mirage;
 using Mirage.Logging;
 using Mirage.Serialization;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -26,6 +27,9 @@ namespace JamesFrowen.CSP
     {
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ClientManager");
         private static readonly ILogger verbose = LogFactory.GetLogger("JamesFrowen.CSP.ClientManager_Verbose", LogType.Exception);
+        private static readonly ProfilerMarker simulateMarker = new ProfilerMarker("Client.Simulate");
+        private static readonly ProfilerMarker resimulateMarker = new ProfilerMarker("Client.Resimulate");
+
         private static StringBuilder _debugBuilder = new StringBuilder();
 
         private readonly TickRunner _tickRunner;
@@ -40,8 +44,9 @@ namespace JamesFrowen.CSP
         /// <summary>Time used for physics, includes resimulation time. Driven by <see cref="_time"/></summary>
         private readonly PredictionTime _time;
         private readonly NetworkWorld world;
+        private readonly ClientInterpolation _clientInterpolation;
         private int? lastReceivedTick;
-        private bool unappliedTick;
+        private bool _needResimulate;
         private const int MAX_INPUT_PER_PACKET = 8;
         private int? ackedInput;
 
@@ -91,6 +96,9 @@ namespace JamesFrowen.CSP
             this.clientTickRunner.OnTick += Tick;
             this.clientTickRunner.OnTickSkip += OnTickSkip;
 
+            _clientInterpolation = new ClientInterpolation(_time);
+            Behaviours.Add(_clientInterpolation);
+
             messageHandler.RegisterHandler<DeltaWorldState>(ReceiveDeltaWorldState);
             this.world = world;
             world.onSpawn += OnSpawn;
@@ -127,17 +135,17 @@ namespace JamesFrowen.CSP
             if (snapshots.Count == 0)
                 return;
 
-            // allocate here so that state can be used befor first tick
+            // allocate here so that state can be used before first tick
             // in first tick this state will be copied to the GroupSnapshot for that tick
-            var group = IdentitySnapshot.Create(_worldSnapshot, identity, snapshots.ToArray(), _allocator);
-            _worldSnapshot.AddGroup(group);
-            group.SetAsActivePtr();
+            var snap = _worldSnapshot.CreateAndAdd(identity, snapshots.ToArray(), _allocator);
+            snap.SetActivePtr(_time.Tick);
 
             foreach (var behaviour in foundBehaviours)
             {
                 if (logger.LogEnabled()) logger.Log($"Spawned (netId:{((NetworkBehaviour)behaviour).NetId},comp:{((NetworkBehaviour)behaviour).ComponentIndex}) {behaviour.GetType()}");
 
                 behaviour.ClientSetup(this, _bufferSize);
+                behaviour.ClientInterpolation = _clientInterpolation;
             }
         }
 
@@ -179,6 +187,7 @@ namespace JamesFrowen.CSP
             }
 
             clientTickRunner.OnMessage(msg.Tick, msg.ClientTime);
+            _clientInterpolation.OnMessage(msg.Tick);
         }
 
         private unsafe void ReadDeltaFromMessage(DeltaWorldState msg)
@@ -203,14 +212,16 @@ namespace JamesFrowen.CSP
         private unsafe void CopyStateForTick(int tick)
         {
             // todo make sure these can be set after, this function shouldn't be dealing with timing, so it should be fine to say we have not received state when it is null
-            unappliedTick = true;
+            //_needResimulate = true; done at end after checking changes
             lastReceivedTick = tick;
 
             var copy = _worldStateCopy.GetOrDefault(tick);
-            var tickSnapshot = _worldSnapshot.GetTick(tick);
             var readPtr = copy.Ptr;
 
             var end = copy.Ptr + copy.IntSize;
+
+            var anyChanged = false;
+            var lookup = _worldSnapshot.LookUp;
             while (readPtr < end)
             {
                 // note: dont need to +1 for readPtr here, becuase group.IntSize includes it
@@ -221,38 +232,42 @@ namespace JamesFrowen.CSP
 
                 // object might be new? and not in snapshot
                 // if so, add it to tick
-                if (!tickSnapshot.Lookup.TryGetValue(header->NetId, out var identitySnapshot))
+                if (!lookup.TryGetValue(header->NetId, out var snapshot))
                 {
-                    if (_worldSnapshot.Spawned.TryGetValue(header->NetId, out var startingGroup))
-                    {
-                        var newGroup = IdentitySnapshot.Clone(startingGroup, _allocator);
-                        tickSnapshot.Add(newGroup);
-                        identitySnapshot = newGroup;
-                    }
-                    else
-                    {
-                        logger.LogError($"(TODO FIX THIS) Could not find NetworkIdentity with id={header->NetId}, Stoping ReceiveState");
-                        return;
-                    }
+                    //if (_worldSnapshot.Spawned.TryGetValue(header->NetId, out var startingGroup))
+                    //{
+
+                    //    var newGroup = IdentitySnapshot.Clone(startingGroup, _allocator);
+                    //    tickSnapshot.AddSnapshot(newGroup);
+                    //    identitySnapshot = newGroup;
+                    //}
+                    //else
+                    //{
+                    logger.LogError($"(TODO FIX THIS) Could not find NetworkIdentity with id={header->NetId}, Stoping ReceiveState");
+                    //    return;
+                    //}
                 }
 
-                // we dont need to 
-                UnsafeHelper.Copy(readPtr, identitySnapshot.Ptr, identitySnapshot.IntSize);
+                // we dont need to
+                var ptr = snapshot.GetStateAtTick(tick);
+                anyChanged |= UnsafeHelper.CopyAndCheckChanged(readPtr, ptr, snapshot.IntSizePerTick);
 
-                readPtr += identitySnapshot.IntSize;
+                readPtr += snapshot.IntSizePerTick;
 
                 if (verbose.LogEnabled())
-                    Verbose_LogBehaviourState(readPtr, identitySnapshot);
+                    Verbose_LogBehaviourState(readPtr, snapshot);
             }
+
+            _needResimulate = anyChanged;
         }
 
-        private static unsafe void Verbose_LogBehaviourState(int* writePtr, IdentitySnapshot group)
+        private static unsafe void Verbose_LogBehaviourState(int* writePtr, IdentitySnapshot snap)
         {
-            var startPtr = writePtr - group.IntSize;
-            verbose.Log($"ReadGroup:{group.IntSize * 4} bytes, netId:{group.Identity.NetId}, Object:{group.Identity.name} Hex:[{*startPtr:X8}]");
+            var startPtr = writePtr - snap.IntSizePerTick;
+            verbose.Log($"ReadGroup:{snap.IntSizePerTick * 4} bytes, netId:{snap.Identity.NetId}, Object:{snap.Identity.name} Hex:[{*startPtr:X8}]");
             startPtr += 1;
 
-            foreach (var snapshot in group.Snapshots)
+            foreach (var snapshot in snap.Snapshots)
             {
                 var netBehaviour = (NetworkBehaviour)snapshot;
                 Debug.Assert(netBehaviour.NetId <= 0xffffff);
@@ -278,72 +293,92 @@ namespace JamesFrowen.CSP
             }
         }
 
-        private void Resimulate(TickSnapshot lastReceived, int from, int to)
+        private unsafe void Resimulate(int from, int to)
         {
-            if (from > to)
+            resimulateMarker.Begin();
+            try
             {
-                logger.LogError($"Cant resimulate because 'from' was after 'to'. From:{from} To:{to}");
-                return;
-            }
-            if (to - from > _bufferSize)
-            {
-                logger.LogError($"Cant resimulate more than BufferSize. From:{from} To:{to}");
-                return;
-            }
-            if (logger.LogEnabled()) logger.Log($"Resimulate from {from} to {to}");
-
-            // call before Resim first, to get snapshot (inside ClientController of state)
-            foreach (var behaviour in _behaviours.GetBehaviours())
-                behaviour.ClientController.BeforeResimulate();
-
-            // then apply last received, and debug create after image
-            lastReceived.SetAsActivePtr();
-
-            foreach (var behaviour in _behaviours.GetBehaviours())
-            {
-                behaviour.AfterStateChanged();
-
-                unsafe
+                if (from > to)
                 {
+                    logger.LogError($"Cant resimulate because 'from' was after 'to'. From:{from} To:{to}");
+                    return;
+                }
+                if (to - from > _bufferSize)
+                {
+                    logger.LogError($"Cant resimulate more than BufferSize. From:{from} To:{to}");
+                    return;
+                }
+                if (logger.LogEnabled()) logger.Log($"Resimulate from {from} to {to}");
+
+                var behaviours = _behaviours.GetBehaviours();
+                var count = behaviours.Count;
+
+                // call before Resim first, to get snapshot (inside ClientController of state)
+                for (var i = 0; i < count; i++)
+                    behaviours[i].ClientController.BeforeResimulate();
+
+                // then apply last received, and debug create after image
+                _worldSnapshot.SetActivePtr(from - 1);
+
+                for (var i = 0; i < count; i++)
+                {
+                    var behaviour = behaviours[i];
+                    behaviour.AfterStateChanged();
+
                     if (behaviour is IDebugPredictionAfterImage debug && debug.ShowAfterImage)
                         debug.CreateAfterImage(behaviour.Ptr, new Color(1f, 0.4f, 0f));
                 }
-            }
 
-            // step forward Applying inputs
-            _time.IsResimulation = true;
-            for (var tick = from; tick <= to; tick++)
+                // step forward Applying inputs
+                _time.IsResimulation = true;
+                for (var tick = from; tick <= to; tick++)
+                {
+                    Simulate(tick);
+                }
+                _time.IsResimulation = false;
+
+                for (var i = 0; i < count; i++)
+                    behaviours[i].ClientController.AfterResimulate();
+            }
+            finally
             {
-                Simulate(tick);
+                resimulateMarker.End();
             }
-            _time.IsResimulation = false;
-
-            foreach (var behaviour in _behaviours.GetBehaviours())
-                behaviour.ClientController.AfterResimulate();
         }
 
         private void Simulate(int tick)
         {
-            _time.Tick = tick;
-
-            _worldSnapshot.BeforeSimulate(tick);
-
-            foreach (var updates in _behaviours.GetUpdates())
+            simulateMarker.Begin();
+            try
             {
-                // if behaviour run full tick stuff, otherwise just call fixedupdate
-                if (updates is IPredictionBehaviour behaviour)
-                    behaviour.ClientController.Simulate(tick);
-                else
-                    updates.NetworkFixedUpdate();
-            }
-            _simulation.Simulate(_time.FixedDeltaTime);
+                _time.Tick = tick;
 
-            // todo, do we need to do this here on client? (might only be needed before we resimulate)
-            foreach (var behaviour in _behaviours.GetBehaviours())
+                _worldSnapshot.CopyFromPreviousTick(tick);
+
+                var updates = _behaviours.GetUpdates();
+                for (var i = 0; i < updates.Count; i++)
+                {
+                    var update = updates[i];
+                    // if behaviour run full tick stuff, otherwise just call fixedupdate
+                    if (update is IPredictionBehaviour behaviour)
+                        behaviour.ClientController.Simulate(tick);
+                    else
+                        update.NetworkFixedUpdate();
+                }
+                _simulation.Simulate(_time.FixedDeltaTime);
+
+                // todo, do we need to do this here on client? (might only be needed before we resimulate)
+                var behaviours = _behaviours.GetBehaviours();
+                for (var i = 0; i < behaviours.Count; i++)
+                {
+                    var behaviour = behaviours[i];
+                    behaviour.AfterTick();
+                }
+            }
+            finally
             {
-                behaviour.AfterTick();
+                simulateMarker.End();
             }
-
         }
 
         internal void Tick(int tick)
@@ -354,18 +389,21 @@ namespace JamesFrowen.CSP
             // we only want to step forward 1 tick at a time so we collect inputs, and sim correctly
             // todo: what happens if we do 2 at once, is that really a problem?
 
-            if (unappliedTick)
+            if (_needResimulate)
             {
-                var lastReceived = _worldSnapshot.GetTick(lastReceivedTick.Value);
                 // from +1 because we receive N, so we need to simulate n+1
                 // sim up to N-1, we do N below when we get new inputs
-                Resimulate(lastReceived, lastReceivedTick.Value + 1, tick - 1);
-                unappliedTick = false;
+                Resimulate(lastReceivedTick.Value + 1, tick - 1);
+                _needResimulate = false;
             }
 
             _time.Tick = tick;
-            foreach (var behaviour in _behaviours.GetBehaviours())
+
+            var behaviours = _behaviours.GetBehaviours();
+            var count = behaviours.Count;
+            for (var i = 0; i < count; i++)
             {
+                var behaviour = behaviours[i];
                 // get and send inputs
                 if (behaviour.UseInputs())
                     behaviour.ClientController.InputTick(tick);
@@ -402,17 +440,20 @@ namespace JamesFrowen.CSP
 
             using (var writer = NetworkWriterPool.GetWriter())
             {
-                foreach (var behaviour in _behaviours.GetBehaviours())
+                var behaviours = _behaviours.GetBehaviours();
+                var count = behaviours.Count;
+                for (var i = 0; i < behaviours.Count; i++)
                 {
+                    var behaviour = behaviours[i];
                     // get and send inputs
                     if (behaviour.UseInputs())
                     {
                         var nb = (NetworkBehaviour)behaviour;
                         Debug.Assert(nb.HasAuthority);
                         writer.WriteNetworkBehaviour(nb);
-                        for (var i = 0; i < length; i++)
+                        for (var j = 0; j < length; j++)
                         {
-                            var t = tick - i;
+                            var t = tick - j;
                             behaviour.ClientController.WriteInput(writer, t);
                         }
                     }
@@ -483,14 +524,6 @@ namespace JamesFrowen.CSP
             behaviour.Identity.OnAuthorityChanged.RemoveListener(OnAuthorityChanged);
         }
 
-        private void ThrowIfHostMode()
-        {
-            if (behaviour.IsLocalClient)
-                throw new InvalidOperationException("Should not be called in host mode");
-        }
-
-
-
         public void BeforeResimulate()
         {
             // we only want to do store before re-simulatuion state if we have simulated any steps locally.
@@ -504,8 +537,6 @@ namespace JamesFrowen.CSP
 
         public void AfterResimulate()
         {
-            ThrowIfHostMode();
-
             if (hasBeforeResimulateState && behaviour.EnableResimulationTransition)
             {
                 var next = *behaviour._statePtr;
@@ -525,8 +556,6 @@ namespace JamesFrowen.CSP
         /// <param name="tick"></param>
         void IClientController.Simulate(int tick)
         {
-            ThrowIfHostMode();
-
             if (behaviour.UseInputs())
             {
                 var input = _inputBuffer.GetOrDefault(tick);
