@@ -43,7 +43,7 @@ namespace JamesFrowen.DeltaSnapshot
 
         internal TState* _statePtr;
 
-        protected TState* StatePtr => _statePtr;
+        public TState* StatePtr => _statePtr;
 
         // todo test if this throws NRE when ptr is 0
         protected ref TState State
