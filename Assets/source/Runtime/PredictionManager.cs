@@ -258,24 +258,26 @@ namespace JamesFrowen.CSP
             _tickRunner.SetRunning(running);
         }
 
-        internal void InputUpdate(IEnumerable<IPredictionUpdates> behaviours)
+        internal void InputUpdate(IReadOnlyList<IPredictionUpdates> behaviours)
         {
             //Debug.Assert(behaviours != null, "Collection null");
 
             _time.Method = UpdateMethod.Input;
-            foreach (var behaviour in behaviours)
+            for (var i = 0; i < behaviours.Count; i++)
             {
+                var behaviour = behaviours[i];
                 //Debug.Assert(behaviour != null, "Behaviour null");
 
                 behaviour.InputUpdate();
             }
             _time.Method = UpdateMethod.None;
         }
-        internal void VisualUpdate(IEnumerable<IPredictionUpdates> behaviours)
+        internal void VisualUpdate(IReadOnlyList<IPredictionUpdates> behaviours)
         {
             _time.Method = UpdateMethod.Visual;
-            foreach (var behaviour in behaviours)
+            for (var i = 0; i < behaviours.Count; i++)
             {
+                var behaviour = behaviours[i];
                 behaviour.VisualUpdate();
             }
             _time.Method = UpdateMethod.None;
@@ -306,7 +308,7 @@ namespace JamesFrowen.CSP
             if (TickRunner != null && DebugOutput != null)
             {
                 DebugOutput.IsServer = Server != null && Server.Active;
-                DebugOutput.IsClient = (Client != null && Client.Active) && !(Server != null && Server.Active);
+                DebugOutput.IsClient = Client != null && Client.Active && !(Server != null && Server.Active);
 
                 if (DebugOutput.IsServer)
                 {
