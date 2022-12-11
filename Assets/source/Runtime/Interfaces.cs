@@ -53,6 +53,15 @@ namespace JamesFrowen.CSP
         int Tick { get; }
 
         /// <summary>
+        /// Variable time that is in liine with fixed ticks, Similar to unity's <see cref="Time.time"/>
+        /// </summary>
+        double Time { get; }
+        /// <summary>
+        /// Amount <see cref="Time"/> changed this update
+        /// </summary>
+        double DeltaTime { get; }
+
+        /// <summary>
         /// Is the current fixed update a resimulation? or the first time tick
         /// </summary>
         bool IsResimulation { get; }
@@ -137,6 +146,8 @@ namespace JamesFrowen.CSP
 
         IServerController ServerController { get; }
         IClientController ClientController { get; }
+
+        ClientInterpolation ClientInterpolation { get; set; }
 
         bool HasInput { get; }
 
