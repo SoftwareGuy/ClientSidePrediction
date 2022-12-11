@@ -80,10 +80,19 @@ namespace JamesFrowen.CSP
             if (_simulation == null)
                 _simulation = new DefaultPredictionSimulation(physicsMode, gameObject.scene);
 
-            Server?.Started.AddListener(ServerStarted);
-            Server?.Stopped.AddListener(ServerStopped);
-            Client?.Started.AddListener(ClientStarted);
-            Client?.Disconnected.AddListener(ClientStopped);
+            if (Server != null)
+            {
+                Server.Started.AddListener(ServerStarted);
+                Server.Stopped.AddListener(ServerStopped);
+                Server.ManualUpdate = false;
+            }
+
+            if (Client != null)
+            {
+                Client.Started.AddListener(ClientStarted);
+                Client.Disconnected.AddListener(ClientStopped);
+                Client.ManualUpdate = false;
+            }
         }
 
         private void OnDestroy()
@@ -110,6 +119,9 @@ namespace JamesFrowen.CSP
             // we need to add players because serverManager keeps track of a list internally
             Server.Connected.AddListener(serverManager.AddPlayer);
             Server.Disconnected.AddListener(serverManager.RemovePlayer);
+
+            _tickRunner.BeforeAllTicks += Server.UpdateReceive;
+            _tickRunner.AfterAllTicks += Server.UpdateSent;
 
             foreach (var player in Server.Players)
                 serverManager.AddPlayer(player);
@@ -152,8 +164,7 @@ namespace JamesFrowen.CSP
                 // todo add throw check inside ClientManager/clientset up to throw if server is active (host mode just uses server controller+behaviour)
                 //clientManager = new ClientManager(hostMode, _simulation, _tickRunner, Client.World, Client.MessageHandler);
 
-                _tickRunner.BeforeAllTicks += () => InputUpdate(serverManager.Behaviours.GetUpdates());
-                _tickRunner.AfterAllTicks += () => VisualUpdate(serverManager.Behaviours.GetUpdates());
+                AddClientEvents(serverManager.Behaviours);
             }
             else
             {
@@ -171,13 +182,26 @@ namespace JamesFrowen.CSP
                 _tickRunner = clientRunner;
                 _time = new PredictionTime(_tickRunner);
                 clientManager = new ClientManager(_simulation, clientRunner, _time, Client.World, Client.Player, Client.MessageHandler, _simpleAlloc);
-                _tickRunner.BeforeAllTicks += () => InputUpdate(clientManager.Behaviours.GetUpdates());
-                _tickRunner.AfterAllTicks += () => VisualUpdate(clientManager.Behaviours.GetUpdates());
+                AddClientEvents(clientManager.Behaviours);
 
                 clientManager.Behaviours.Add(UniTaskExtras.CustomTimingHelper.Init());
             }
 
             SetClientReady(_clientReady);
+        }
+
+        private void AddClientEvents(PredictionCollection behaviours)
+        {
+            _tickRunner.BeforeAllTicks += () =>
+            {
+                Client.UpdateReceive();
+                InputUpdate(behaviours.GetUpdates());
+            };
+            _tickRunner.AfterAllTicks += () =>
+            {
+                VisualUpdate(behaviours.GetUpdates());
+                Server.UpdateSent();
+            };
         }
 
         private void ClientStopped(ClientStoppedReason _)
@@ -259,7 +283,18 @@ namespace JamesFrowen.CSP
 
         private void Update()
         {
+            // manaully update if tickRunner is null or not running
+            if (_tickRunner == null || !_tickRunner.IsRunning)
+            {
+                Server?.UpdateReceive();
+                Server?.UpdateSent();
+                Client?.UpdateReceive();
+                Client?.UpdateSent();
+            }
+
+
             _tickRunner?.OnUpdate();
+
 #if DEBUG
             SetGuiValues();
 #endif
