@@ -82,6 +82,14 @@ namespace JamesFrowen.CSP
             _sortedBehaviours.AddRange(behaviours);
         }
 
+        public void Add(IPredictionUpdates update)
+        {
+            _needsSorting = true;
+
+            update.PredictionTime = _time;
+            _sortedUpdates.Add(update);
+        }
+
         public void Add(IEnumerable<IPredictionUpdates> updates)
         {
             _needsSorting = true;
