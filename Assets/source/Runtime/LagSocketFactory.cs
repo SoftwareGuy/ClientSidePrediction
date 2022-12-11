@@ -66,6 +66,9 @@ namespace JamesFrowen.Mirage.DebugScripts
         /// Sin Frequency added to latency
         /// </summary>
         public float JitterSinFrequency = 40f;
+
+        public float ZagAmplitude = 5 / 1000f;
+        public float ZagFrequency = 40 / 1000f;
     }
 
 
@@ -82,6 +85,7 @@ namespace JamesFrowen.Mirage.DebugScripts
         private readonly double dropSinOffset;
         private readonly double latencySinOffset;
         private readonly double jitterSinOffset;
+        private readonly double zagOffset;
 
         // hard copies to endpoints because the one inner gives us may be changed and re-used
         private readonly Dictionary<IEndPoint, IEndPoint> endPoints = new Dictionary<IEndPoint, IEndPoint>();
@@ -98,6 +102,7 @@ namespace JamesFrowen.Mirage.DebugScripts
             dropSinOffset = random.NextDouble() * 2 * Math.PI;
             latencySinOffset = random.NextDouble() * 2 * Math.PI;
             jitterSinOffset = random.NextDouble() * 2 * Math.PI;
+            zagOffset = random.NextDouble();
         }
 
         public void Send(IEndPoint endPoint, byte[] packet, int length) => inner.Send(endPoint, packet, length);
@@ -186,7 +191,7 @@ namespace JamesFrowen.Mirage.DebugScripts
 
             var rand = random.NextDouble();
 
-            var angle = Now() * settings.DropSinFrequency + dropSinOffset;
+            var angle = (Now() * settings.DropSinFrequency) + dropSinOffset;
             var chance = settings.DropChance * Math.Sin(angle);
             return rand < chance;
         }
@@ -195,15 +200,20 @@ namespace JamesFrowen.Mirage.DebugScripts
         {
             // add 2 sin wave together so there will be chances between ticks and between seconds
 
-            var angle1 = Now() * settings.LatencySinFrequency + latencySinOffset;
-            var angle2 = Now() * settings.JitterSinFrequency + jitterSinOffset;
+            var now = Now();
+            var angle1 = (now * settings.LatencySinFrequency) + latencySinOffset;
+            var angle2 = (now * settings.JitterSinFrequency) + jitterSinOffset;
             var sin1 = Math.Sin(angle1);
             var sin2 = Math.Sin(angle2);
 
             var sin1A = sin1 * settings.LatencySinAmplitude;
             var sin2A = sin2 * settings.JitterSinAmplitude;
 
-            return settings.Latency + sin1A + sin2A;
+            var zagT = (now * settings.ZagFrequency) + zagOffset;
+            var zag = zagT % 1;
+            var zagA = zag * settings.ZagAmplitude;
+
+            return settings.Latency + sin1A + sin2A + zagA;
         }
 
         public bool Poll()
