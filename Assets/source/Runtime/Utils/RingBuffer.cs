@@ -1,4 +1,4 @@
-﻿/*******************************************************
+/*******************************************************
  * Copyright (C) 2021 James Frowen <JamesFrowenDev@gmail.com>
  * 
  * This file is part of JamesFrowen ClientSidePrediction
@@ -19,7 +19,13 @@ namespace JamesFrowen.CSP
     {
         private readonly int _size;
         private readonly T[] _buffer;
+
         public int Count => _size;
+
+        /// <summary>
+        /// Can be used to loop over all items when order is not required
+        /// </summary>
+        public T[] All => _buffer;
 
         public RingBuffer(int size)
         {
