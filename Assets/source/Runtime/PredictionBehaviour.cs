@@ -72,7 +72,14 @@ namespace JamesFrowen.CSP
         /// </summary>
         public IAddLateEvent OnPredictionSetup => _onPredictionSetup;
 
+        /// <summary>
+        /// Is this object on a client that does not have authority
+        /// <para>This can be used to check if state should be update or interpolated instead</para>
+        /// </summary>
+        public bool IsRemoteClient => IsClient && !HasAuthority;
+
         public IPredictionTime PredictionTime { get; set; }
+        public ClientInterpolation ClientInterpolation { get; set; }
 
         /// <summary>
         /// Used to disable input for this object
