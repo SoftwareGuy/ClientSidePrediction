@@ -1,3 +1,25 @@
+# [1.0.0-beta.12](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.11...v1.0.0-beta.12) (2022-12-11)
+
+
+### Bug Fixes
+
+* adding if LogEnabled before log ([16daccc](https://github.com/James-Frowen/ClientSidePrediction/commit/16dacccbcdbc739472e8838e4f949cebc4d673a1))
+
+
+### Features
+
+* adding Frame time to TickRunner ([81731aa](https://github.com/James-Frowen/ClientSidePrediction/commit/81731aa706678e9039d7994cf81ec79f0108340b))
+* adding Interpolation methods for client ([60d5c2a](https://github.com/James-Frowen/ClientSidePrediction/commit/60d5c2a7e0cd19d272fed0e1ac589c4940374975))
+* adding property to get internal buffer ([641477f](https://github.com/James-Frowen/ClientSidePrediction/commit/641477f03f5176067dab71fb9ddc97f38ce1cca0))
+* adding zag settings to lagfactory ([bf45415](https://github.com/James-Frowen/ClientSidePrediction/commit/bf45415302dbf0e08b70215abe1bc1097c41a88e))
+* making StatePtr public ([1fd270a](https://github.com/James-Frowen/ClientSidePrediction/commit/1fd270aeb6a273c3b90e93f0d618a3ebaa44264d))
+
+
+### Performance Improvements
+
+* removing TickSnapshot and stopping some allocations ([c73074f](https://github.com/James-Frowen/ClientSidePrediction/commit/c73074f2719e60742174c1bb68808e233b9537bb))
+* using list to reduce allocations ([b60d077](https://github.com/James-Frowen/ClientSidePrediction/commit/b60d077751a6cfb0be56cfe831f056de0ad70ee6))
+
 # [1.0.0-beta.11](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.10...v1.0.0-beta.11) (2022-12-05)
 
 
