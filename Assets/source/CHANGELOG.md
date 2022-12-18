@@ -1,3 +1,10 @@
+# [1.0.0-beta.13](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.12...v1.0.0-beta.13) (2022-12-18)
+
+
+### Bug Fixes
+
+* adding null check in destory ([5b0708a](https://github.com/James-Frowen/ClientSidePrediction/commit/5b0708ae1e08d43141aedcb767655bcc300bd9c4))
+
 # [1.0.0-beta.12](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.11...v1.0.0-beta.12) (2022-12-11)
 
 
