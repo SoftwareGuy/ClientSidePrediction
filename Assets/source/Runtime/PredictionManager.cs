@@ -101,7 +101,7 @@ namespace JamesFrowen.CSP
             ServerStopped();
             ClientStopped(default);
 
-            _simpleAlloc.Dispose();
+            _simpleAlloc?.Dispose();
         }
 
         private void ServerStarted()
