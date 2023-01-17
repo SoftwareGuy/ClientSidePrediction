@@ -15,11 +15,6 @@ using UnityEngine;
 
 namespace JamesFrowen.CSP.Alloc
 {
-    public static class AllocHelper
-    {
-        [DllImport("kernel32.dll")]
-        public static extern void RtlZeroMemory(IntPtr dst, UIntPtr length);
-    }
     public sealed unsafe class SimpleAlloc : IAllocator, IDisposable
     {
         private const string TAG = "[SimpleAlloc]";
@@ -35,7 +30,7 @@ namespace JamesFrowen.CSP.Alloc
                 if (logger.WarnEnabled()) logger.LogWarning(TAG, $"Alloc size was not a mutliple of 4");
 
             var intPtr = Marshal.AllocHGlobal(byteCount);
-            AllocHelper.RtlZeroMemory(intPtr, new UIntPtr((uint)byteCount));
+            AllocHelper.ZeroMemory(intPtr, byteCount);
             var ptr = intPtr.ToPointer();
 
             var allocation = new Allocation(ptr, byteCount);
