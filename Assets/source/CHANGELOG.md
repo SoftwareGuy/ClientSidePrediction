@@ -1,3 +1,17 @@
+# [1.0.0-beta.15](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.14...v1.0.0-beta.15) (2023-01-17)
+
+
+### Bug Fixes
+
+* fixing remote client bool ([5eda4a2](https://github.com/James-Frowen/ClientSidePrediction/commit/5eda4a2c7c71b010a4c1028db79a5278c62edb79))
+* fixing unitask extra timing for first/last updates ([04ceb70](https://github.com/James-Frowen/ClientSidePrediction/commit/04ceb70bf4ca838ff2fa8ca0ef69ff40f49b866f))
+* not running update if editor is paused ([f4c3c98](https://github.com/James-Frowen/ClientSidePrediction/commit/f4c3c98e549e7150ff7d7c47439b2e2cd84aa2e0))
+
+
+### Features
+
+* adding helper method to get 2 states for interpolation ([bd8c284](https://github.com/James-Frowen/ClientSidePrediction/commit/bd8c284eaee7c2552eb13a859de6e77d344509be))
+
 # [1.0.0-beta.14](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.13...v1.0.0-beta.14) (2023-01-17)
 
 
