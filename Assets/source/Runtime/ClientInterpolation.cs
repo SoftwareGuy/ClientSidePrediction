@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using JamesFrowen.DeltaSnapshot;
 using JamesFrowen.PositionSync;
 using Mirage;
 using Mirage.Logging;
@@ -469,7 +470,7 @@ namespace JamesFrowen.CSP
             return Interpolation.HasValue;
         }
 
-        int IPredictionUpdates.Order => int.MinValue;
+        int IPredictionUpdates.Order => int.MinValue; // first
         IPredictionTime IPredictionUpdates.PredictionTime
         {
             get => _time;
@@ -522,5 +523,30 @@ namespace JamesFrowen.CSP
 
         void IPredictionUpdates.InputUpdate() { }
         void IPredictionUpdates.NetworkFixedUpdate() { }
+
+        public unsafe bool GetState<TState>(SnapshotBehaviour<TState> behaviour, out TState* tick1, out TState* tick2, out float delta) where TState : unmanaged
+        {
+            tick1 = null;
+            tick2 = null;
+            delta = 0;
+
+            if (!TryGetInterpolation(out var interpolation))
+                return false;
+
+            tick2 = behaviour.GetStateAtTick(interpolation.Tick2);
+            if (tick2 == null)
+                return false; // this object did not exist for this tick, so we can't interpolate
+
+            // if Tick1 is "use_local" or GetStateAtTick returns null, then use local state
+            // GetStateAtTick may return null if object didn't exist for tick1
+            if (interpolation.Tick1 == USE_LOCAL_STATE
+                || (tick1 = behaviour.GetStateAtTick(interpolation.Tick1)) == null)
+            {
+                tick1 = behaviour.StatePtr;
+            }
+
+            delta = interpolation.Delta;
+            return true;
+        }
     }
 }

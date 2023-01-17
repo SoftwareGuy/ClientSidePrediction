@@ -7,6 +7,7 @@
  * permission of James Frowen
  *******************************************************/
 
+using JamesFrowen.CSP;
 using JamesFrowen.CSP.Alloc;
 using Mirage;
 
@@ -57,7 +58,7 @@ namespace JamesFrowen.DeltaSnapshot
             }
         }
 
-        protected TState* GetStateAtTick(int tick)
+        public TState* GetStateAtTick(int tick)
         {
             var manager = ((ISnapshotBehaviour)this).SnapshotManager;
             var ptr = manager.GetStateAtTick(this, tick);
@@ -77,6 +78,8 @@ namespace JamesFrowen.DeltaSnapshot
         }
 
         int ISnapshotBehaviour.PtrIntOffset { get; set; }
+
+        public ClientInterpolation ClientInterpolation { get; set; }
         ISnapshotManager ISnapshotBehaviour.SnapshotManager { get; set; }
 
         // round up to nearest 32 bit;
