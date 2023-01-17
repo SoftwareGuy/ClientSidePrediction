@@ -1,3 +1,10 @@
+# [1.0.0-beta.14](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.13...v1.0.0-beta.14) (2023-01-17)
+
+
+### Bug Fixes
+
+* fixing zero memory for non-windows platforms ([4484817](https://github.com/James-Frowen/ClientSidePrediction/commit/4484817d374406fe93965a47a6b7a5c078bfeeb0))
+
 # [1.0.0-beta.13](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.12...v1.0.0-beta.13) (2022-12-18)
 
 
