@@ -165,6 +165,10 @@ namespace JamesFrowen.CSP
             var delta = now - lastFrame;
             lastFrame = now;
 
+#if UNITY_EDITOR
+            if (UnityEditor.EditorApplication.isPaused)
+                return;
+#endif
             // store last frame above even if we are not running
             // so that when we start running again the delta will not be huge
             if (!_isRunning)
