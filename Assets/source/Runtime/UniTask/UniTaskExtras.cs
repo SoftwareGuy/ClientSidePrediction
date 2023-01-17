@@ -6,11 +6,11 @@ using UnityEngine;
 
 namespace JamesFrowen.CSP.UniTaskExtras
 {
-    public readonly struct CustomYieldAwaitable
+    public readonly struct NetworkYieldAwaitable
     {
         private readonly CustomTiming timing;
 
-        public CustomYieldAwaitable(CustomTiming timing)
+        public NetworkYieldAwaitable(CustomTiming timing)
         {
             this.timing = timing;
         }
