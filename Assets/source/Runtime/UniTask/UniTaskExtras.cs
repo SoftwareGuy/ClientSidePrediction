@@ -151,10 +151,14 @@ namespace JamesFrowen.CSP.UniTaskExtras
 #if DEBUG
             switch (_timing)
             {
+                case CustomTiming.FirstNetworkFixedUpdate:
                 case CustomTiming.NetworkFixedUpdate:
+                case CustomTiming.LastNetworkFixedUpdate:
                     NetworkFixedUpdate();
                     break;
+                case CustomTiming.FirstVisualUpdate:
                 case CustomTiming.VisualUpdate:
+                case CustomTiming.LastVisualUpdate:
                     VisualUpdate();
                     break;
             }
