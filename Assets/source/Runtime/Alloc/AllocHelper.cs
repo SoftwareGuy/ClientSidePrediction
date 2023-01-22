@@ -14,7 +14,7 @@ namespace JamesFrowen.CSP.Alloc
 {
     public static class AllocHelper
     {
-        public static void ZeroMemory(IntPtr ptr, int byteLengthh)
+        public static void ZeroMemory(IntPtr ptr, int byteLength)
         {
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
             RtlZeroMemory(ptr, new UIntPtr((uint)byteLengthh));
