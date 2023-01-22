@@ -5,6 +5,9 @@
  * 
  * The code below can not be copied and/or distributed without the express
  * permission of James Frowen
+ * 
+ * 2023-01-22: Modified by Matt Coburn (SoftwareGuy) with additions from FakeByte from
+ * the Mirage Discord to improve native memory zeroing on multiple platforms.
  *******************************************************/
 
 using System;
