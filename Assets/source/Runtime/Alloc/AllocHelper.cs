@@ -9,6 +9,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Security;
 
 namespace JamesFrowen.CSP.Alloc
 {
