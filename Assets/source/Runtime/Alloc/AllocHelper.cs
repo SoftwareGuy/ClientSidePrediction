@@ -36,5 +36,21 @@ namespace JamesFrowen.CSP.Alloc
                 ptr[i] = 0;
             }
         }
+
+        #region Platform-dependent Imports
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport("msvcrt.dll", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);
+#elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport("libc", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);    
+#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport("libc", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);  
+#endif
+        #endregion
     }
 }
