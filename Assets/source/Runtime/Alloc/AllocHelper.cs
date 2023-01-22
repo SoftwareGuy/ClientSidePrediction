@@ -16,19 +16,22 @@ namespace JamesFrowen.CSP.Alloc
     {
         public static void ZeroMemory(IntPtr ptr, int byteLength)
         {
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
-            RtlZeroMemory(ptr, new UIntPtr((uint)byteLengthh));
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WINDOWS || UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+            // We're a Windows, Mac or Linux platform: Use native's memset function. 
+            memset((IntPtr)ptr, 0, (UIntPtr)byteLength);
 #else
-            ZeroNonWindwos(ptr, byteLengthh);
+            // Fail-safe for all the other platforms (mobile, console (?), ...)
+            ZeroMemoryFallback(ptr, byteLength);
 #endif
         }
 
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
-        [DllImport("kernel32.dll")]
-        private static extern void RtlZeroMemory(IntPtr dst, UIntPtr length);
-#endif
-
-        private static unsafe void ZeroNonWindwos(IntPtr dst, int length)
+        /// <summary>
+        /// Zeroes memory in the native world. Beware, improper use of this
+        /// functionality will likely make things explode.
+        /// </summary>
+        /// <param name="dst"></param>
+        /// <param name="length"></param>
+        private static unsafe void ZeroMemoryFallback(IntPtr dst, int length)
         {
             var ptr = (byte*)dst;
             for (var i = 0; i < length; i++)
