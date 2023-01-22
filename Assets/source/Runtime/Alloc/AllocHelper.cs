@@ -49,14 +49,10 @@ namespace JamesFrowen.CSP.Alloc
         [SuppressUnmanagedCodeSecurity]
         [DllImport("msvcrt.dll", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);
-#elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
+#elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
         [SuppressUnmanagedCodeSecurity]
         [DllImport("libc", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);    
-#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport("libc", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);  
+        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);
 #endif
         #endregion
     }
