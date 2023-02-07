@@ -1,3 +1,16 @@
+# [1.0.0-beta.16](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.15...v1.0.0-beta.16) (2023-02-07)
+
+
+### Bug Fixes
+
+* fixing obsolete Physics.autoSimulation ([6229f62](https://github.com/James-Frowen/ClientSidePrediction/commit/6229f62b4a315dca507d1cd9e8bfef55a7c6f8c3))
+* increasing mirage version ([0fffa82](https://github.com/James-Frowen/ClientSidePrediction/commit/0fffa8222acd8fe8c2d4110a2c9bfa605c16d660))
+
+
+### Features
+
+* adding Run function for custom unitask timing ([e570b01](https://github.com/James-Frowen/ClientSidePrediction/commit/e570b019bfff24429d1bafc3cbb6379e1b0f655b))
+
 # [1.0.0-beta.15](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.14...v1.0.0-beta.15) (2023-01-17)
 
 
