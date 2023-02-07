@@ -191,9 +191,9 @@ namespace JamesFrowen.CSP
                 AddClientEvents(clientManager.Behaviours);
 
                 clientManager.Behaviours.Add(UniTaskExtras.CustomTimingHelper.Init());
-            }
 
-            SetClientReady(AutoStart || _clientReady);
+                SetClientReady(AutoStart || _clientReady);
+            }
         }
 
         private void AddClientEvents(PredictionCollection behaviours)
@@ -236,6 +236,12 @@ namespace JamesFrowen.CSP
         public void SetClientReady(bool ready)
         {
             if (logger.LogEnabled()) logger.Log($"SetClientReady: {ready}");
+
+            if (Client.IsLocalClient)
+            {
+                if (logger.WarnEnabled()) logger.LogWarning($"SetClientReady does nothing in host moode and should not be called");
+                return;
+            }
 
             // store bool incase clientManager isn't created yet
             _clientReady = ready;
