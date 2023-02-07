@@ -54,6 +54,7 @@ namespace JamesFrowen.DeltaSnapshot
 
             if (!_lookup.TryGetValue(identity.NetId, out var snap))
             {
+                // todo remove warning, CreateAndAdd is not called when GO has no snapshotbehaviours, but remove still is 
                 if (logger.WarnEnabled()) logger.LogWarning($"trying to remove {identity.NetId} but it was missing in Lookup");
                 return;
             }
