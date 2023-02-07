@@ -2,10 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace JamesFrowen.CSP.UniTaskExtras
 {
+    public static class NetworkYield
+    {
+        public static void Run(CustomTiming timing, Action action)
+        {
+            UniTask.Void(async () =>
+            {
+                await new NetworkYieldAwaitable(timing);
+                action.Invoke();
+            });
+        }
+    }
+
     public readonly struct NetworkYieldAwaitable
     {
         private readonly CustomTiming timing;
