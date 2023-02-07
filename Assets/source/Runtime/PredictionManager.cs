@@ -40,7 +40,9 @@ namespace JamesFrowen.CSP
         [Header("Simulation")]
         [Tooltip("Should the timer automatically start when server/client, or should it wait for SetServerRunning/SetClientReady to be called manually")]
         public bool AutoStart = true;
-        public SimulationMode physicsMode;
+
+        [FormerlySerializedAs("physicsMode")]
+        public SimulationMode PhysicsMode;
 
         [Header("Tick Settings")]
         public float TickRate = 50;
@@ -82,7 +84,7 @@ namespace JamesFrowen.CSP
             _simpleAlloc = new SimpleAlloc();
 
             if (_simulation == null)
-                _simulation = new DefaultPredictionSimulation(physicsMode, gameObject.scene);
+                _simulation = new DefaultPredictionSimulation(PhysicsMode, gameObject.scene);
 
             if (Server != null)
             {

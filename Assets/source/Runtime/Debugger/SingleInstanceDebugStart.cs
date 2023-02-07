@@ -69,7 +69,7 @@ namespace JamesFrowen.CSP.Debugging
             }
             manager.Client = client;
             manager.Server = server;
-            manager.physicsMode = simulationMode;
+            manager.PhysicsMode = simulationMode;
             SceneManager.MoveGameObjectToScene(go, scene);
             go.SetActive(true);
             return manager;
