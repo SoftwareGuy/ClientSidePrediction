@@ -1,3 +1,13 @@
+# [1.0.0-beta.17](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.16...v1.0.0-beta.17) (2023-02-07)
+
+
+* feat!: adding AutoStart option to prediction manager ([4a4db74](https://github.com/James-Frowen/ClientSidePrediction/commit/4a4db745f32c86ac2f710426d1ae9736bf654df3))
+
+
+### BREAKING CHANGES
+
+* auto start defaults to true so will need to be unchecked if manually setting ready
+
 # [1.0.0-beta.16](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.15...v1.0.0-beta.16) (2023-02-07)
 
 
