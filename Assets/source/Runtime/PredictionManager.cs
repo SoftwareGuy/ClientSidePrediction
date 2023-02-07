@@ -38,6 +38,8 @@ namespace JamesFrowen.CSP
         public NetworkClient Client;
 
         [Header("Simulation")]
+        [Tooltip("Should the timer automatically start when server/client, or should it wait for SetServerRunning/SetClientReady to be called manually")]
+        public bool AutoStart = true;
         public SimulationMode physicsMode;
 
         [Header("Tick Settings")]
@@ -49,6 +51,8 @@ namespace JamesFrowen.CSP
 
         [Header("Debug")]
         public TickDebuggerOutput DebugOutput;
+
+        //
         private ClientManager clientManager;
         private ServerManager serverManager;
         private TickRunner _tickRunner;
@@ -126,7 +130,7 @@ namespace JamesFrowen.CSP
             foreach (var player in Server.Players)
                 serverManager.AddPlayer(player);
 
-            SetServerRunning(_serverRunning);
+            SetServerRunning(AutoStart || _serverRunning);
         }
 
         private void ServerStopped()
@@ -187,7 +191,7 @@ namespace JamesFrowen.CSP
                 clientManager.Behaviours.Add(UniTaskExtras.CustomTimingHelper.Init());
             }
 
-            SetClientReady(_clientReady);
+            SetClientReady(AutoStart || _clientReady);
         }
 
         private void AddClientEvents(PredictionCollection behaviours)
