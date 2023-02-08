@@ -1,3 +1,11 @@
+# [1.0.0-beta.18](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.17...v1.0.0-beta.18) (2023-02-08)
+
+
+### Bug Fixes
+
+* avoid calling SetClientReady in host mode ([b151b7c](https://github.com/James-Frowen/ClientSidePrediction/commit/b151b7c127e5e03e41c83f0d51b128fcd628e979))
+* fixing unity version for simulationMode ([017f7fa](https://github.com/James-Frowen/ClientSidePrediction/commit/017f7fa014d12e1a93571eecafbb779c37f28269))
+
 # [1.0.0-beta.17](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.16...v1.0.0-beta.17) (2023-02-07)
 
 
