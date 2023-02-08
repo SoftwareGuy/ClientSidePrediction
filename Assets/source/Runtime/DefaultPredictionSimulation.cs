@@ -27,7 +27,11 @@ namespace JamesFrowen.CSP.Simulations
             switch (mode)
             {
                 case SimulationMode.Physics3D:
+#if UNITY_2021_3_OR_NEWER
+                    Physics.simulationMode = UnityEngine.SimulationMode.Script;
+#else
                     Physics.autoSimulation = false;
+#endif
                     break;
                 case SimulationMode.Physics2D:
 #if UNITY_2020_1_OR_NEWER
@@ -50,7 +54,6 @@ namespace JamesFrowen.CSP.Simulations
                     throw new InvalidEnumArgumentException();
             }
         }
-
         public DefaultPredictionSimulation(SimulationMode mode)
         {
             this.mode = mode;
@@ -58,7 +61,11 @@ namespace JamesFrowen.CSP.Simulations
             switch (mode)
             {
                 case SimulationMode.Physics3D:
+#if UNITY_2021_3_OR_NEWER
+                    Physics.simulationMode = UnityEngine.SimulationMode.Script;
+#else
                     Physics.autoSimulation = false;
+#endif
                     break;
                 case SimulationMode.Physics2D:
 #if UNITY_2020_1_OR_NEWER
