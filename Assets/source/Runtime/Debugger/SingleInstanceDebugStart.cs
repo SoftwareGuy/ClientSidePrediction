@@ -86,7 +86,7 @@ namespace JamesFrowen.CSP.Debugging
             }
             if (localPhysicsMode == LocalPhysicsMode.Physics3D)
             {
-#if UNITY_2021_3_OR_NEWER
+#if UNITY_2022_2_OR_NEWER
                 Physics.simulationMode = UnityEngine.SimulationMode.Script;
 #else
                 Physics.autoSimulation = false;
