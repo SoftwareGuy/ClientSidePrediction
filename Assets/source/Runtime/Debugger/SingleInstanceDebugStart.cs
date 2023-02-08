@@ -60,7 +60,7 @@ namespace JamesFrowen.CSP.Debugging
         private PredictionManager CreateManager(NetworkClient client, NetworkServer server, Scene scene)
         {
             var nameSuffix = server != null ? "Server" : "Client";
-            var go = new GameObject($"PredictionManager {nameSuffix}");
+            var go = new GameObject($"PredictionManager ({nameSuffix})");
             go.SetActive(false);
             var manager = go.AddComponent<PredictionManager>();
             if (ShowGui)
@@ -74,6 +74,7 @@ namespace JamesFrowen.CSP.Debugging
             go.SetActive(true);
             return manager;
         }
+
         private IEnumerator Setup()
         {
             if (localPhysicsMode == LocalPhysicsMode.Physics2D)
@@ -84,15 +85,12 @@ namespace JamesFrowen.CSP.Debugging
                 Physics2D.autoSimulation = false;
 #endif
             }
-            if (localPhysicsMode == LocalPhysicsMode.Physics3D)
-            {
-#if UNITY_2021_3_OR_NEWER
-                Physics.simulationMode = UnityEngine.SimulationMode.Script;
-#else
-                Physics.autoSimulation = false;
-#endif
-            }
 
+            // Disable auto simulation if using Physics 3D simulation mode.
+            if (localPhysicsMode == LocalPhysicsMode.Physics3D)
+            {                
+                Physics.autoSimulation = false;
+            }
 
             yield return SetupServer();
             yield return SetupClient();
