@@ -11,7 +11,10 @@ using System;
 
 namespace JamesFrowen.CSP
 {
-    public class SimpleMovingAverage
+    /// <summary>
+    /// Calcualtes the average of the previous N values
+    /// </summary>
+    public class MovingAverage
     {
         private readonly float[] _values;
         private int _index;
@@ -22,7 +25,7 @@ namespace JamesFrowen.CSP
         /// </summary>
         private int _countInBuffer;
 
-        public SimpleMovingAverage(int size)
+        public MovingAverage(int size)
         {
             _values = new float[size];
         }
@@ -73,7 +76,7 @@ namespace JamesFrowen.CSP
             for (var i = 0; i < _countInBuffer; i++)
             {
                 var diff = _values[i] - average;
-                sum += (diff * diff);
+                sum += diff * diff;
             }
 
             var sqStdDev = sum / (_countInBuffer - 1);

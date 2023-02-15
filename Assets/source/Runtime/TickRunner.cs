@@ -242,7 +242,7 @@ namespace JamesFrowen.CSP
         // ring buffers are 64, so set 60 as max to be safe
         // todo make this a field, not const
         private const int MAX_TICK_DELAY = 60;
-        private readonly SimpleMovingAverage _RTTAverage;
+        private readonly MovingAverage _RTTAverage;
         private readonly float fastScale = 1.01f;
         private readonly float normalScale = 1f;
         private readonly float slowScale = 0.99f;
@@ -256,7 +256,7 @@ namespace JamesFrowen.CSP
 
 #if DEBUG
         public float Debug_DelayInTicks { get; private set; }
-        public SimpleMovingAverage Debug_RTT => _RTTAverage;
+        public MovingAverage Debug_RTT => _RTTAverage;
 #endif
 
 #if CLIENT_TICK_RUNNER_VERBOSE
@@ -288,7 +288,7 @@ namespace JamesFrowen.CSP
             fastScale = normalScale + (timeScaleModifier * 5);
             slowScale = normalScale - timeScaleModifier;
 
-            _RTTAverage = new SimpleMovingAverage(movingAverageCount);
+            _RTTAverage = new MovingAverage(movingAverageCount);
 
 #if CLIENT_TICK_RUNNER_VERBOSE
             try

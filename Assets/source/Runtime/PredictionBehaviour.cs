@@ -8,20 +8,12 @@
  *******************************************************/
 
 using System;
-using System.Runtime.InteropServices;
 using JamesFrowen.DeltaSnapshot;
 using Mirage;
 using Mirage.Events;
 
 namespace JamesFrowen.CSP
 {
-    /// <summary>
-    /// Placeholder input for non-input class
-    /// Use never be used by scripts
-    /// </summary>
-    [StructLayout(LayoutKind.Explicit, Size = 0)]
-    public struct NoValues { }
-
     /// <summary>
     /// Base class for Client side prediction for objects without input, like physics objects in a scene.
     /// </summary>

@@ -8,14 +8,14 @@ namespace Tests
         [Test]
         public void AverageIsZeroWhenEmpty()
         {
-            var movingAvg = new SimpleMovingAverage(10);
+            var movingAvg = new MovingAverage(10);
             Assert.That(movingAvg.GetAverage(), Is.Zero);
         }
 
         [Test]
         public void CalculatesAverage()
         {
-            var movingAvg = new SimpleMovingAverage(10);
+            var movingAvg = new MovingAverage(10);
             movingAvg.Add(1);
             Assert.That(movingAvg.GetAverage(), Is.EqualTo(1));
 
@@ -30,7 +30,7 @@ namespace Tests
         [Test]
         public void StdDevIsZeroWhenCountLessThan2()
         {
-            var movingAvg = new SimpleMovingAverage(10);
+            var movingAvg = new MovingAverage(10);
             Assert.That(movingAvg.GetStandardDeviation(), Is.Zero);
             movingAvg.Add(1);
             Assert.That(movingAvg.GetStandardDeviation(), Is.Zero);
@@ -39,7 +39,7 @@ namespace Tests
         [Test]
         public void CalculatesStdDev()
         {
-            var movingAvg = new SimpleMovingAverage(10);
+            var movingAvg = new MovingAverage(10);
             const float expected = 0.5f;
             movingAvg.Add(1);
             movingAvg.Add(1.5f);
@@ -54,7 +54,7 @@ namespace Tests
         [Test]
         public void CalculatesStdDevAndAvg()
         {
-            var movingAvg = new SimpleMovingAverage(10);
+            var movingAvg = new MovingAverage(10);
             const float expectedAvg = 1.5f;
             const float expectedStdDev = 0.5f;
             float average;
