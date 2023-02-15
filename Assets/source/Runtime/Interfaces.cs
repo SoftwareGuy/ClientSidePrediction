@@ -106,7 +106,7 @@ namespace JamesFrowen.CSP
 
         void ReceiveHostInput<TInput>(int tick, TInput _input);
         void SetHostMode();
-        void ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick);
+        void ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick, int lastSimulation);
     }
 
     public interface IDebugPredictionLocalCopy
@@ -141,9 +141,6 @@ namespace JamesFrowen.CSP
 
     internal interface IPredictionBehaviour : IPredictionUpdates, ISnapshotBehaviour
     {
-        ServerManager ServerManager { get; }
-        ClientManager ClientManager { get; }
-
         IServerController ServerController { get; }
         IClientController ClientController { get; }
 
@@ -163,9 +160,8 @@ namespace JamesFrowen.CSP
         /// </summary>
         void AfterTick();
 
-
-        void ServerSetup(ServerManager serverManager, int buffeSize);
-        void ClientSetup(ClientManager clientManager, int buffeSize);
+        void ServerSetup(int buffeSize);
+        void ClientSetup(int bufferSize, ClientInterpolation clientInterpolation);
         void CleanUp();
     }
 

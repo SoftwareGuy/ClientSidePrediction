@@ -1,4 +1,4 @@
-﻿/*******************************************************
+/*******************************************************
  * Copyright (C) 2021 James Frowen <JamesFrowenDev@gmail.com>
  * 
  * This file is part of JamesFrowen ClientSidePrediction
@@ -8,7 +8,6 @@
  *******************************************************/
 
 using System;
-using Mirage;
 using Mirage.Logging;
 using Mirage.Serialization;
 using UnityEngine;
@@ -24,8 +23,6 @@ namespace JamesFrowen.CSP
     {
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerController");
         private readonly PredictionBehaviourBase<TInput, TState> behaviour;
-        private readonly int _bufferSize;
-        private readonly ServerManager _manager;
         private NullableRingBuffer<TInput> _inputBuffer;
         private (int tick, TInput input) lastValidInput;
         private int? lastReceived = null;
@@ -35,30 +32,21 @@ namespace JamesFrowen.CSP
             hostMode = true;
         }
 
-        public ServerController(ServerManager manager, PredictionBehaviourBase<TInput, TState> behaviour, int bufferSize)
+        public ServerController(PredictionBehaviourBase<TInput, TState> behaviour, int bufferSize)
         {
-            _manager = manager;
             this.behaviour = behaviour;
-            _bufferSize = bufferSize;
 
-            if (behaviour.UseInputs())
+            // these buffers are small 
+            // dont worry about authority, just create one for all objects
+            if (behaviour.HasInput)
                 _inputBuffer = new NullableRingBuffer<TInput>(bufferSize);
-            else // listen just incase auth is given late
-                behaviour.Identity.OnOwnerChanged.AddListener(OnOwnerChanged);
         }
 
-        private void OnOwnerChanged(INetworkPlayer newOwner)
-        {
-            // create buffer and remove listener
-            _inputBuffer = new NullableRingBuffer<TInput>(_bufferSize);
-            behaviour.Identity.OnOwnerChanged.RemoveListener(OnOwnerChanged);
-        }
-
-        void IServerController.ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick)
+        void IServerController.ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick, int lastSimulation)
         {
             var input = reader.Read<TInput>();
             // if new, and after last sim
-            if (inputTick > tracker.lastReceivedInput && inputTick > _manager._lastSim)
+            if (inputTick > tracker.lastReceivedInput && inputTick > lastSimulation)
             {
                 lastReceived = tracker.lastReceivedInput;
                 _inputBuffer.Set(inputTick, input);

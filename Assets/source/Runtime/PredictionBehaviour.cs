@@ -41,20 +41,11 @@ namespace JamesFrowen.CSP
 
         private ClientController<TInput, TState> _clientController;
         private ServerController<TInput, TState> _serverController;
-        private ServerManager _serverManager;
-        private ClientManager _clientManager;
         private AddLateEvent _onPredictionSetup = new AddLateEvent();
 
-        // annoying cs stuff to have internal property and interface
-        internal IClientController ClientController => _clientController;
-        internal IServerController ServerController => _serverController;
         IClientController IPredictionBehaviour.ClientController => _clientController;
         IServerController IPredictionBehaviour.ServerController => _serverController;
 
-        internal ServerManager ServerManager => _serverManager;
-        internal ClientManager ClientManager => _clientManager;
-        ServerManager IPredictionBehaviour.ServerManager => _serverManager;
-        ClientManager IPredictionBehaviour.ClientManager => _clientManager;
 
         /// <summary>
         /// Invoked at the end of IPredictionBehaviour setup methods.
@@ -168,17 +159,16 @@ namespace JamesFrowen.CSP
             // you can override this function to apply moving between state before-re-simulatution and after.
         }
 
-        void IPredictionBehaviour.ServerSetup(ServerManager serverManager, int buffeSize)
+        void IPredictionBehaviour.ServerSetup(int buffeSize)
         {
-            _serverManager = serverManager;
-            _serverController = new ServerController<TInput, TState>(ServerManager, this, buffeSize);
+            _serverController = new ServerController<TInput, TState>(this, buffeSize);
 
             _onPredictionSetup.Invoke();
         }
-        void IPredictionBehaviour.ClientSetup(ClientManager clientManager, int buffeSize)
+        void IPredictionBehaviour.ClientSetup(int buffeSize, ClientInterpolation clientInterpolation)
         {
-            _clientManager = clientManager;
             _clientController = new ClientController<TInput, TState>(this, buffeSize);
+            ClientInterpolation = clientInterpolation;
 
             _onPredictionSetup.Invoke();
         }
@@ -188,8 +178,7 @@ namespace JamesFrowen.CSP
             PredictionTime = null;
             _serverController = null;
             _clientController = null;
-            _serverManager = null;
-            _clientManager = null;
+            ClientInterpolation = null;
 
             _onPredictionSetup.Reset();
         }

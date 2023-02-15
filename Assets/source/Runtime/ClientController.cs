@@ -1,4 +1,4 @@
-﻿/*******************************************************
+/*******************************************************
  * Copyright (C) 2021 James Frowen <JamesFrowenDev@gmail.com>
  * 
  * This file is part of JamesFrowen ClientSidePrediction
@@ -23,7 +23,6 @@ namespace JamesFrowen.CSP
     {
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ClientController");
         private readonly PredictionBehaviourBase<TInput, TState> behaviour;
-        private readonly int _bufferSize;
         private NullableRingBuffer<TInput> _inputBuffer;
 
         private bool hasSimulatedLocally;
@@ -35,18 +34,11 @@ namespace JamesFrowen.CSP
         public ClientController(PredictionBehaviourBase<TInput, TState> behaviour, int bufferSize)
         {
             this.behaviour = behaviour;
-            _bufferSize = bufferSize;
 
-            if (behaviour.UseInputs())
+            // these buffers are small 
+            // dont worry about authority, just create one for all objects
+            if (behaviour.HasInput)
                 _inputBuffer = new NullableRingBuffer<TInput>(bufferSize);
-            else // listen just incase auth is given late
-                behaviour.Identity.OnAuthorityChanged.AddListener(OnAuthorityChanged);
-        }
-
-        private void OnAuthorityChanged(bool arg0)
-        {
-            _inputBuffer = new NullableRingBuffer<TInput>(_bufferSize);
-            behaviour.Identity.OnAuthorityChanged.RemoveListener(OnAuthorityChanged);
         }
 
         public void BeforeResimulate()

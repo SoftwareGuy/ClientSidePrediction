@@ -145,7 +145,7 @@ namespace JamesFrowen.CSP
             {
                 if (logger.LogEnabled()) logger.Log($"Found PredictionBehaviour for {identity.NetId} {behaviour.GetType().Name}");
 
-                behaviour.ServerSetup(this, _bufferSize);
+                behaviour.ServerSetup(_bufferSize);
                 if (_hostMode)
                     behaviour.ServerController.SetHostMode();
             }
@@ -503,7 +503,7 @@ namespace JamesFrowen.CSP
                     for (var i = 0; i < length; i++)
                     {
                         var t = inputTick - i;
-                        behaviour.ServerController.ReadInput(tracker, reader, t);
+                        behaviour.ServerController.ReadInput(tracker, reader, t, _lastSim);
                     }
                 }
             }

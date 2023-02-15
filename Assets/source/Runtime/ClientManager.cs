@@ -144,8 +144,7 @@ namespace JamesFrowen.CSP
             {
                 if (logger.LogEnabled()) logger.Log($"Spawned (netId:{((NetworkBehaviour)behaviour).NetId},comp:{((NetworkBehaviour)behaviour).ComponentIndex}) {behaviour.GetType()}");
 
-                behaviour.ClientSetup(this, _bufferSize);
-                behaviour.ClientInterpolation = _clientInterpolation;
+                behaviour.ClientSetup(_bufferSize, _clientInterpolation);
             }
         }
 
