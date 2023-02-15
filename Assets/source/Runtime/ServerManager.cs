@@ -26,6 +26,7 @@ namespace JamesFrowen.CSP
     /// </summary>
     internal sealed class ServerManager
     {
+        // todo what should this really be?
         private const int MESSAGE_HEADER = 26; // rough guess
         private const int MAX_NOTIFY_SIZE = 1219 - MESSAGE_HEADER;
 
