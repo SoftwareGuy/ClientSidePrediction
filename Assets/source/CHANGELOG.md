@@ -1,3 +1,10 @@
+# [1.0.0-beta.19](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.18...v1.0.0-beta.19) (2023-02-20)
+
+
+### Bug Fixes
+
+* fixing log name ([cfc4cd4](https://github.com/James-Frowen/ClientSidePrediction/commit/cfc4cd47fb5da89d1d763d9a707c55949b6124c2))
+
 # [1.0.0-beta.18](https://github.com/James-Frowen/ClientSidePrediction/compare/v1.0.0-beta.17...v1.0.0-beta.18) (2023-02-08)
 
 
