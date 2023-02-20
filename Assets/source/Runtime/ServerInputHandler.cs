@@ -1,4 +1,4 @@
-﻿/*******************************************************
+/*******************************************************
  * Copyright (C) 2021 James Frowen <JamesFrowenDev@gmail.com>
  * 
  * This file is part of JamesFrowen ClientSidePrediction
@@ -18,8 +18,8 @@ namespace JamesFrowen.CSP
 {
     internal class ServerInputHandler
     {
-        private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerManager");
-        private static readonly ILogger verbose = LogFactory.GetLogger("JamesFrowen.CSP.ServerManager_Verbose", LogType.Exception);
+        private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerInputHandler");
+        private static readonly ILogger verbose = LogFactory.GetLogger("JamesFrowen.CSP.ServerInputHandler_Verbose", LogType.Exception);
 
         private readonly Dictionary<INetworkPlayer, PlayerTimeTracker> _playerTracker;
         private readonly NetworkWorld _world;
