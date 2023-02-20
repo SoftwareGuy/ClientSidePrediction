@@ -44,7 +44,7 @@ namespace JamesFrowen.CSP
                 _inputBuffer = new NullableRingBuffer<TInput>(bufferSize);
         }
 
-        void IServerController.ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick, int lastSimulation)
+        void IServerController.ReadInput(PlayerTimeTracker tracker, NetworkReader reader, int inputTick, int lastSimulation)
         {
             var input = reader.Read<TInput>();
             // if new, and after last sim
