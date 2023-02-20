@@ -46,8 +46,9 @@ namespace JamesFrowen.CSP
         private readonly HashSet<NetworkIdentity> _gameObjects = new HashSet<NetworkIdentity>();
         private readonly List<IPredictionUpdates> _sortedUpdates = new List<IPredictionUpdates>();
         private readonly List<IPredictionBehaviour> _sortedBehaviours = new List<IPredictionBehaviour>();
+        private readonly IPredictionTime _time;
+
         private bool _needsSorting;
-        private IPredictionTime _time;
 
         public PredictionCollection(IPredictionTime time)
         {

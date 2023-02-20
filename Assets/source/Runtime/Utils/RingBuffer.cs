@@ -57,5 +57,13 @@ namespace JamesFrowen.CSP
         {
             _buffer[IndexToBuffer(index)] = default;
         }
+
+        public void FillWithNew<T2>() where T2 : T, new()
+        {
+            for (var i = 0; i < _size; i++)
+            {
+                _buffer[i] = new T2();
+            }
+        }
     }
 }

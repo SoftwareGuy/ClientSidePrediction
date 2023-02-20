@@ -287,11 +287,9 @@ namespace JamesFrowen.Mirage.DebugScripts
 
     internal class LagSocketGUI
     {
-        //public Rect offset = new Rect(10, 10, 400, 800);
-        //public Color background;
-        private GUIStyle style;
-        private Texture2D tex;
-        private GUIStyle boldText;
+        private readonly GUIStyle style;
+        private readonly Texture2D tex;
+        private readonly GUIStyle boldText;
 
         public LagSocketGUI()
         {
@@ -360,9 +358,9 @@ namespace JamesFrowen.Mirage.DebugScripts
             // if been 2 second since edit then apply value
             if (Time.time < delayText[label] + 2)
             {
+                // only set value if parse was successful
                 if (float.TryParse(outText, out var fValue))
                 {
-
                     value = fValue;
                 }
             }

@@ -1,4 +1,4 @@
-﻿/*******************************************************
+/*******************************************************
  * Copyright (C) 2021 James Frowen <JamesFrowenDev@gmail.com>
  * 
  * This file is part of JamesFrowen ClientSidePrediction
@@ -11,8 +11,8 @@ namespace JamesFrowen.CSP
 {
     public struct NetworkInputs<TInput>
     {
-        public TInput Current;
-        public TInput Previous;
+        public readonly TInput Current;
+        public readonly TInput Previous;
 
         public NetworkInputs(TInput current, TInput previous)
         {

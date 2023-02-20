@@ -22,7 +22,7 @@ namespace JamesFrowen.CSP.Alloc
         {
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WINDOWS || UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
             // We're a Windows, Mac or Linux platform: Use native's memset function. 
-            memset((IntPtr)ptr, 0, (UIntPtr)byteLength);
+            memset(ptr, 0, (UIntPtr)byteLength);
 #else
             // Fail-safe for all the other platforms (mobile, console (?), ...)
             ZeroMemoryFallback(ptr, byteLength);
@@ -48,11 +48,11 @@ namespace JamesFrowen.CSP.Alloc
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
         [SuppressUnmanagedCodeSecurity]
         [DllImport("msvcrt.dll", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);
+        private static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);
 #elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
         [SuppressUnmanagedCodeSecurity]
         [DllImport("libc", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);
+        private static extern IntPtr memset(IntPtr dest, int value, UIntPtr byteCount);
 #endif
         #endregion
     }

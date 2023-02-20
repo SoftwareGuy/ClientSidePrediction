@@ -41,7 +41,7 @@ namespace JamesFrowen.CSP
 
         private ClientController<TInput, TState> _clientController;
         private ServerController<TInput, TState> _serverController;
-        private AddLateEvent _onPredictionSetup = new AddLateEvent();
+        private readonly AddLateEvent _onPredictionSetup = new AddLateEvent();
 
         IClientController IPredictionBehaviour.ClientController => _clientController;
         IServerController IPredictionBehaviour.ServerController => _serverController;
@@ -159,15 +159,15 @@ namespace JamesFrowen.CSP
             // you can override this function to apply moving between state before-re-simulatution and after.
         }
 
-        void IPredictionBehaviour.ServerSetup(int buffeSize)
+        void IPredictionBehaviour.ServerSetup(int bufferSize)
         {
-            _serverController = new ServerController<TInput, TState>(this, buffeSize);
+            _serverController = new ServerController<TInput, TState>(this, bufferSize);
 
             _onPredictionSetup.Invoke();
         }
-        void IPredictionBehaviour.ClientSetup(int buffeSize, ClientInterpolation clientInterpolation)
+        void IPredictionBehaviour.ClientSetup(int bufferSize, ClientInterpolation clientInterpolation)
         {
-            _clientController = new ClientController<TInput, TState>(this, buffeSize);
+            _clientController = new ClientController<TInput, TState>(this, bufferSize);
             ClientInterpolation = clientInterpolation;
 
             _onPredictionSetup.Invoke();

@@ -72,9 +72,9 @@ namespace JamesFrowen.PositionSync
         /// How much below the goalOffset difference are we allowed to go before changing the timescale
         /// </summary>
         private readonly float negativeThreshold;
-        private readonly float fastScale = 1.01f;
+        private readonly float fastScale;
         private const float normalScale = 1f;
-        private readonly float slowScale = 0.99f;
+        private readonly float slowScale;
 
         /// <summary>
         /// Is the difference between previous time and new time too far apart?
@@ -459,18 +459,22 @@ namespace JamesFrowen.CSP
     public class ClientInterpolation : IPredictionUpdates
     {
         public const int USE_LOCAL_STATE = -1;
+
+        int IPredictionUpdates.Order => int.MinValue; // first
+
+
         private readonly SnapshotBuffer<InterpolationTick> _buffer;
         private readonly InterpolationTime _timeSync;
         private IPredictionTime _time;
 
         public InterpolationTick? Interpolation;
+
         public bool TryGetInterpolation(out InterpolationTick interpolation)
         {
             interpolation = Interpolation.GetValueOrDefault();
             return Interpolation.HasValue;
         }
 
-        int IPredictionUpdates.Order => int.MinValue; // first
         IPredictionTime IPredictionUpdates.PredictionTime
         {
             get => _time;

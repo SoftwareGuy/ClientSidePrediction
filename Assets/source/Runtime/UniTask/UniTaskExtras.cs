@@ -105,7 +105,7 @@ namespace JamesFrowen.CSP.UniTaskExtras
             queues[(int)timing].Enqueue(continuation);
         }
 
-        private class Updates : IPredictionUpdates
+        private sealed class Updates : IPredictionUpdates
         {
             private readonly CustomTimingQueue _fixedQueue;
             private readonly CustomTimingQueue _visualQueue;

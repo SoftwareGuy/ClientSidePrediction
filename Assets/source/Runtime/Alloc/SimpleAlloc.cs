@@ -15,14 +15,14 @@ using UnityEngine;
 
 namespace JamesFrowen.CSP.Alloc
 {
-    public sealed unsafe class SimpleAlloc : IAllocator, IDisposable
+    public sealed unsafe class SimpleAlloc : IAllocator
     {
         private const string TAG = "[SimpleAlloc]";
         private static readonly ILogger logger = LogFactory.GetLogger<SimpleAlloc>();
 
         ~SimpleAlloc() => ReleaseAll();
 
-        private Dictionary<IHasAllocatedPointer, Allocation> _allocations = new Dictionary<IHasAllocatedPointer, Allocation>();
+        private readonly Dictionary<IHasAllocatedPointer, Allocation> _allocations = new Dictionary<IHasAllocatedPointer, Allocation>();
 
         public void Allocate(IHasAllocatedPointer owner, int byteCount)
         {
@@ -102,7 +102,7 @@ namespace JamesFrowen.CSP.Alloc
             ReleaseAll();
         }
 
-        private class NoOwner : IHasAllocatedPointer
+        private sealed class NoOwner : IHasAllocatedPointer
         {
             public string name => "NoOwner";
             public void* Ptr { get; set; }

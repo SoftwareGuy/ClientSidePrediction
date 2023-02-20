@@ -5,8 +5,6 @@ namespace JamesFrowen.CSP.Debugging
 {
     public class TickDebugger : NetworkBehaviour
     {
-        //public int ClientDelay;
-
         private TickRunner tickRunner;
 
         private ClientTickRunner ClientRunner => (ClientTickRunner)tickRunner;
@@ -14,7 +12,7 @@ namespace JamesFrowen.CSP.Debugging
         private double latestClientTime;
         private int clientTick;
         private int serverTick;
-        private ExponentialMovingAverage diff = new ExponentialMovingAverage(10);
+        private readonly ExponentialMovingAverage diff = new ExponentialMovingAverage(10);
         private TickDebuggerOutput gui;
 
         private void Awake()

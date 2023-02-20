@@ -96,7 +96,7 @@ namespace JamesFrowen.CSP
         void BeforeResimulate();
 
         void Simulate(int tick);
-        void InputTick(int clientLastSim);
+        void InputTick(int tick);
         void WriteInput(NetworkWriter writer, int tick);
     }
 
@@ -106,7 +106,7 @@ namespace JamesFrowen.CSP
 
         void ReceiveHostInput<TInput>(int tick, TInput _input);
         void SetHostMode();
-        void ReadInput(ServerManager.PlayerTimeTracker tracker, NetworkReader reader, int inputTick, int lastSimulation);
+        void ReadInput(PlayerTimeTracker tracker, NetworkReader reader, int inputTick, int lastSimulation);
     }
 
     public interface IDebugPredictionLocalCopy
@@ -160,14 +160,8 @@ namespace JamesFrowen.CSP
         /// </summary>
         void AfterTick();
 
-        void ServerSetup(int buffeSize);
+        void ServerSetup(int bufferSize);
         void ClientSetup(int bufferSize, ClientInterpolation clientInterpolation);
         void CleanUp();
-    }
-
-    [System.Obsolete("Avoid state that isn't fixed size", true)]
-    public interface ISnapshotDisposer<TState>
-    {
-        void DisposeState(TState state);
     }
 }

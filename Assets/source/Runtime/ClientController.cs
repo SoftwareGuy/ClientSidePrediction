@@ -23,7 +23,7 @@ namespace JamesFrowen.CSP
     {
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ClientController");
         private readonly PredictionBehaviourBase<TInput, TState> behaviour;
-        private NullableRingBuffer<TInput> _inputBuffer;
+        private readonly NullableRingBuffer<TInput> _inputBuffer;
 
         private bool hasSimulatedLocally;
         private bool hasBeforeResimulateState;

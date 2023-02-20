@@ -20,7 +20,7 @@ namespace JamesFrowen.CSP
 
         public PredictionTime(TickRunner runner)
         {
-            _runner = runner ?? throw new ArgumentNullException();
+            _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         }
 
         public float FixedDeltaTime => _runner.FixedDeltaTime;
@@ -243,14 +243,14 @@ namespace JamesFrowen.CSP
         // todo make this a field, not const
         private const int MAX_TICK_DELAY = 60;
         private readonly MovingAverage _RTTAverage;
-        private readonly float fastScale = 1.01f;
-        private readonly float normalScale = 1f;
-        private readonly float slowScale = 0.99f;
-        private readonly float positiveThreshold;
-        private readonly float negativeThreshold;
-        private readonly float skipAheadThreshold;
-        private bool intialized;
-        private int latestServerTick;
+        private readonly float _fastScale;
+        private readonly float _normalScale = 1f;
+        private readonly float _slowScale;
+        private readonly float _positiveThreshold;
+        private readonly float _negativeThreshold;
+        private readonly float _skipAheadThreshold;
+        private bool _intialized;
+        private int _latestServerTick;
 
         //public float ClientDelaySeconds => ClientDelay * FixedDeltaTime;
 
@@ -277,16 +277,16 @@ namespace JamesFrowen.CSP
             // IMPORTANT: most of these values are in tick NOT seconds, so careful when using them
 
             // if client is off by 0.5 then speed up/slow down
-            positiveThreshold = diffThreshold;
-            negativeThreshold = -positiveThreshold;
+            _positiveThreshold = diffThreshold;
+            _negativeThreshold = -_positiveThreshold;
 
             // skip ahead if client fall behind by this many ticks
-            skipAheadThreshold = skipThreshold;
+            _skipAheadThreshold = skipThreshold;
 
             // speed up/slow down up by 0.01 if after/behind
             // we never want to be behind so catch up faster
-            fastScale = normalScale + (timeScaleModifier * 5);
-            slowScale = normalScale - timeScaleModifier;
+            _fastScale = _normalScale + (timeScaleModifier * 5);
+            _slowScale = _normalScale - timeScaleModifier;
 
             _RTTAverage = new MovingAverage(movingAverageCount);
 
@@ -308,24 +308,24 @@ namespace JamesFrowen.CSP
         public void ResetTime()
         {
             _RTTAverage.Reset();
-            intialized = false;
+            _intialized = false;
         }
 
         public override void OnUpdate()
         {
             // only update client tick if server has sent first state
-            if (intialized)
+            if (_intialized)
                 base.OnUpdate();
         }
 
         private bool CheckOrder(int serverTick)
         {
-            if (serverTick <= latestServerTick)
+            if (serverTick <= _latestServerTick)
             {
-                logger.LogError($"Received message out of order server:{latestServerTick}, new:{serverTick}");
+                logger.LogError($"Received message out of order server:{_latestServerTick}, new:{serverTick}");
                 return false;
             }
-            latestServerTick = serverTick;
+            _latestServerTick = serverTick;
             return true;
         }
 
@@ -346,7 +346,7 @@ namespace JamesFrowen.CSP
             // if first message set client time to server-diff
             // reset stuff if too far behind
             // todo check this is correct
-            if (!intialized)
+            if (!_intialized)
             {
                 InitNew(serverTick);
                 return;
@@ -360,7 +360,7 @@ namespace JamesFrowen.CSP
             // if diff is bad enough, skip ahead
             // todo do we need abs, do also want to skip back if we are very ahead?
             // todo will skipping behind cause negative effects? we dont want Tick event to be invoked for a tick twice
-            if (Math.Abs(diff) > skipAheadThreshold)
+            if (Math.Abs(diff) > _skipAheadThreshold)
             {
                 (var lag, var jitter) = _RTTAverage.GetAverageAndStandardDeviation();
                 logger.LogWarning($"Client fell behind, skipping ahead. server:{serverTick:0.00} serverGuess:{serverGuess} diff:{diff:0.00}. RTT[lag={lag},jitter={jitter}]");
@@ -427,8 +427,8 @@ namespace JamesFrowen.CSP
         {
             _tick = Mathf.CeilToInt(serverTick + DelayInTicks());
             // todo do we need to also set _time here?
-            TimeScaleMultiple = normalScale;
-            intialized = true;
+            TimeScaleMultiple = _normalScale;
+            _intialized = true;
             // todo do we need to invoke this at start as well as skip?
             OnTickSkip?.Invoke();
         }
@@ -442,14 +442,14 @@ namespace JamesFrowen.CSP
             // we want diffVsGoal to be as close to 0 as possible
 
             // server ahead, speed up client
-            if (diff > positiveThreshold)
-                TimeScaleMultiple = fastScale;
+            if (diff > _positiveThreshold)
+                TimeScaleMultiple = _fastScale;
             // server behind, slow down client
-            else if (diff < negativeThreshold)
-                TimeScaleMultiple = slowScale;
+            else if (diff < _negativeThreshold)
+                TimeScaleMultiple = _slowScale;
             // close enough
             else
-                TimeScaleMultiple = normalScale;
+                TimeScaleMultiple = _normalScale;
         }
 
 

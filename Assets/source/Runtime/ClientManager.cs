@@ -69,8 +69,8 @@ namespace JamesFrowen.CSP
         public int Debug_ServerTick => lastReceivedTick.GetValueOrDefault();
 
         //delta snapshot
-        private NullableRingBuffer<WorldStateCopy> _worldStateCopy;
-        private DeltaSnapshotWriter _deltaSnapshot;
+        private readonly NullableRingBuffer<WorldStateCopy> _worldStateCopy;
+        private readonly DeltaSnapshotWriter _deltaSnapshot;
 
 
         public ClientManager(
@@ -233,18 +233,8 @@ namespace JamesFrowen.CSP
                 // if so, add it to tick
                 if (!lookup.TryGetValue(header->NetId, out var snapshot))
                 {
-                    //if (_worldSnapshot.Spawned.TryGetValue(header->NetId, out var startingGroup))
-                    //{
-
-                    //    var newGroup = IdentitySnapshot.Clone(startingGroup, _allocator);
-                    //    tickSnapshot.AddSnapshot(newGroup);
-                    //    identitySnapshot = newGroup;
-                    //}
-                    //else
-                    //{
                     logger.LogError($"(TODO FIX THIS) Could not find NetworkIdentity with id={header->NetId}, Stoping ReceiveState");
-                    //    return;
-                    //}
+                    return;
                 }
 
                 // we dont need to
@@ -441,7 +431,7 @@ namespace JamesFrowen.CSP
             {
                 var behaviours = _behaviours.GetBehaviours();
                 var count = behaviours.Count;
-                for (var i = 0; i < behaviours.Count; i++)
+                for (var i = 0; i < count; i++)
                 {
                     var behaviour = behaviours[i];
                     // get and send inputs

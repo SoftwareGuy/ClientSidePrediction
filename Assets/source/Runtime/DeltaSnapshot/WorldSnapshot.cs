@@ -243,7 +243,7 @@ namespace JamesFrowen.DeltaSnapshot
         }
     }
 
-    public unsafe class UnsafeHelper
+    public static unsafe class UnsafeHelper
     {
         public static void Copy(void* from, void* to, int intCount)
         {

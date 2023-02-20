@@ -23,10 +23,12 @@ namespace JamesFrowen.CSP
     {
         private static readonly ILogger logger = LogFactory.GetLogger("JamesFrowen.CSP.ServerController");
         private readonly PredictionBehaviourBase<TInput, TState> behaviour;
-        private NullableRingBuffer<TInput> _inputBuffer;
+        private readonly NullableRingBuffer<TInput> _inputBuffer;
+
         private (int tick, TInput input) lastValidInput;
         private int? lastReceived = null;
         private bool hostMode;
+
         void IServerController.SetHostMode()
         {
             hostMode = true;

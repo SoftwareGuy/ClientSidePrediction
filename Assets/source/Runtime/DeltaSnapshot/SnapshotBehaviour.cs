@@ -82,7 +82,7 @@ namespace JamesFrowen.DeltaSnapshot
         public ClientInterpolation ClientInterpolation { get; set; }
         ISnapshotManager ISnapshotBehaviour.SnapshotManager { get; set; }
 
-        // round up to nearest 32 bit;
+        // round up to nearest 32 bit
         public int AllocationSizeInts => (sizeof(TState) + 3) / 4;
     }
 }
